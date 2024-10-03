@@ -1,0 +1,6 @@
+{
+  "watch": ["server.js", "src/"],
+  "ignore": ["node_modules", "logs/*"],
+  "ext": "js,json",
+  "exec": "node --experimental-modules src/server.js"
+}
