@@ -26,7 +26,7 @@ const generateUsers = async () => {
 
     await client.query(
       'INSERT INTO Users (username, email, password, avatar) VALUES ($1, $2, $3, $4)',
-      [username, email, password, avatar],
+      [username, email, password, avatar]
     );
   }
   console.log('Users generated.');
@@ -42,7 +42,7 @@ const generatePlans = async () => {
 
     await client.query(
       'INSERT INTO Plans (user_id, title, description, public) VALUES ($1, $2, $3, $4)',
-      [userId, title, description, isPublic],
+      [userId, title, description, isPublic]
     );
   }
   console.log('Plans generated.');
@@ -58,10 +58,7 @@ const generateTasks = async () => {
     const order = faker.number.int({ min: 1, max: 10 });
     const durationMinutes = faker.number.int({ min: 10, max: 120 });
     const isMandatory = faker.datatype.boolean();
-    const tag = faker.helpers.arrayElement(
-      ['прием пищи', 'тренировка', 'витамины'],
-      1,
-    );
+    const tag = faker.helpers.arrayElement(['прием пищи', 'тренировка', 'витамины'], 1);
     const calories = faker.number.int({ min: 100, max: 1000 });
     const protein = faker.number.float({ min: 10, max: 50 });
     const carbs = faker.number.float({ min: 20, max: 100 });
@@ -82,7 +79,7 @@ const generateTasks = async () => {
         protein,
         carbs,
         fats,
-      ],
+      ]
     );
   }
   console.log('Tasks generated.');
@@ -100,14 +97,7 @@ const generatePlanProgress = async () => {
 
     await client.query(
       'INSERT INTO Plan_Progress (user_id, plan_id, progress_date, completed_tasks_count, mandatory_tasks_count, all_tasks_completed) VALUES ($1, $2, $3, $4, $5, $6)',
-      [
-        userId,
-        planId,
-        progressDate,
-        completedTasksCount,
-        mandatoryTasksCount,
-        allTasksCompleted,
-      ],
+      [userId, planId, progressDate, completedTasksCount, mandatoryTasksCount, allTasksCompleted]
     );
   }
   console.log('Plan progress generated.');
@@ -120,10 +110,11 @@ const generateLikes = async () => {
     const planId = faker.number.int({ min: 1, max: NUM_PLANS });
     const likeDate = faker.date.recent();
 
-    await client.query(
-      'INSERT INTO Likes (user_id, plan_id, like_date) VALUES ($1, $2, $3)',
-      [userId, planId, likeDate],
-    );
+    await client.query('INSERT INTO Likes (user_id, plan_id, like_date) VALUES ($1, $2, $3)', [
+      userId,
+      planId,
+      likeDate,
+    ]);
   }
   console.log('Likes generated.');
 };
@@ -138,7 +129,7 @@ const generateFrozenLikes = async () => {
 
     await client.query(
       'INSERT INTO Frozen_Likes (user_id, plan_id, freeze_start_date, freeze_end_date) VALUES ($1, $2, $3, $4)',
-      [userId, planId, freezeStartDate, freezeEndDate],
+      [userId, planId, freezeStartDate, freezeEndDate]
     );
   }
   console.log('Frozen likes generated.');

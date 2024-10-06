@@ -17,7 +17,7 @@ export class AuthController {
 
   async login(request) {
     try {
-      return this.userRepository.login(request.body.email, request.body.password);
+      return this.userRepository.login(request.body.username, request.body.password);
     } catch (err) {
       throw err;
     }

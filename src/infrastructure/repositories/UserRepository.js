@@ -16,7 +16,7 @@ export class UserRepository {
       const checkUserExistenseQuery = this.#knex
         .queryBuilder()
         .select('*')
-        .from('users')
+        .from('Users')
         .where('email', '=', email)
         .first()
         .toSQL()
@@ -39,7 +39,7 @@ export class UserRepository {
           email,
           password: hashedPassword,
         })
-        .into('users')
+        .into('Users')
         .returning('*')
         .toSQL()
         .toNative();
@@ -57,7 +57,7 @@ export class UserRepository {
     const findUserQuery = this.#knex
       .queryBuilder()
       .select('*')
-      .from('users')
+      .from('Users')
       .where('email', '=', email)
       .first()
       .toSQL()

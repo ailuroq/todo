@@ -1,111 +1,179 @@
 -- Таблица пользователей
-CREATE TABLE Users (
-    user_id SERIAL PRIMARY KEY,
-    username VARCHAR(50) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    avatar TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE "Users" (
+    "userId" SERIAL PRIMARY KEY,
+    "username" VARCHAR(50) NOT NULL,
+    "email" VARCHAR(100) UNIQUE NOT NULL,
+    "password" VARCHAR(255) NOT NULL,
+    "avatar" TEXT,
+    "role" VARCHAR(20) DEFAULT 'user',
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Таблица планов
-CREATE TABLE Plans (
-    plan_id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES Users(user_id),
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    public BOOLEAN DEFAULT TRUE,
-    likes_count INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Таблица задач
-CREATE TABLE Tasks (
-    task_id SERIAL PRIMARY KEY,
-    plan_id INT REFERENCES Plans(plan_id) ON DELETE CASCADE,
-    user_id INT REFERENCES Users(user_id) ON DELETE SET NULL,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    "order" INT,
-    duration_minutes INT,
-    repeating BOOLEAN DEFAULT FALSE,
-    mandatory BOOLEAN DEFAULT FALSE,  -- Флаг обязательной задачи
-    tag VARCHAR(50),
-    calories DECIMAL(10, 2),
-    protein DECIMAL(10, 2),
-    carbs DECIMAL(10, 2),
-    fats DECIMAL(10, 2),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Таблица уведомлений
-CREATE TABLE Notifications (
-    notification_id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES Users(user_id) ON DELETE CASCADE,
-    plan_id INT REFERENCES Plans(plan_id),
-    event_time TIMESTAMP NOT NULL,
-    type VARCHAR(50) NOT NULL,  -- Тип уведомления (например, "пропущенное событие", "достижение")
-    read BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE "Plans" (
+    "planId" SERIAL PRIMARY KEY,
+    "userId" INT REFERENCES "Users"("userId"),
+    "title" VARCHAR(255) NOT NULL,
+    "description" TEXT,
+    "details" TEXT,
+    "category" VARCHAR(50),
+    "isPublic" BOOLEAN DEFAULT TRUE,
+    "likesCount" INT DEFAULT 0,
+    "version" INT DEFAULT 1,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Таблица тегов для задач
-CREATE TABLE Tags (
-    tag_id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL,
-    description TEXT
+CREATE TABLE "Tags" (
+    "tagId" SERIAL PRIMARY KEY,
+    "name" VARCHAR(50) NOT NULL,
+    "description" TEXT
+);
+
+-- Таблица задач
+CREATE TABLE "Tasks" (
+    "taskId" SERIAL PRIMARY KEY,
+    "planId" INT REFERENCES "Plans"("planId") ON DELETE CASCADE,
+    "userId" INT REFERENCES "Users"("userId") ON DELETE SET NULL,
+    "title" VARCHAR(255) NOT NULL,
+    "description" TEXT,
+    "taskOrder" INT,
+    "durationMinutes" INT,
+    "isRepeating" BOOLEAN DEFAULT FALSE,
+    "isMandatory" BOOLEAN DEFAULT FALSE,
+    "repeatType" VARCHAR(50),
+    "repeatDays" VARCHAR(50),
+    "tagId" INT REFERENCES "Tags"("tagId"),
+    "startTime" TIME,
+    "endTime" TIME,
+    "status" VARCHAR(50) DEFAULT 'pending',
+    "calories" DECIMAL(10, 2),
+    "protein" DECIMAL(10, 2),
+    "carbs" DECIMAL(10, 2),
+    "fats" DECIMAL(10, 2),
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Таблица уведомлений
+CREATE TABLE "Notifications" (
+    "notificationId" SERIAL PRIMARY KEY,
+    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "planId" INT REFERENCES "Plans"("planId"),
+    "taskId" INT REFERENCES "Tasks"("taskId"),
+    "eventTime" TIMESTAMP NOT NULL,
+    "type" VARCHAR(50) NOT NULL,
+    "isRead" BOOLEAN DEFAULT FALSE,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Таблица достижений (общие достижения, например, 10 дней подряд)
-CREATE TABLE Achievements (
-    achievement_id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,  -- Название достижения (например, "10 дней подряд")
-    description TEXT NOT NULL,   -- Описание достижения
-    condition_type VARCHAR(50),  -- Тип условия (например, "дни подряд", "месяц подряд")
-    required_value INT NOT NULL, -- Значение условия (например, 10 дней или 30 дней)
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE "Achievements" (
+    "achievementId" SERIAL PRIMARY KEY,
+    "name" VARCHAR(255) NOT NULL,
+    "description" TEXT NOT NULL,
+    "conditionType" VARCHAR(50),
+    "requiredValue" INT NOT NULL,
+    "icon" TEXT,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Таблица достижений пользователей
-CREATE TABLE User_Achievements (
-    user_achievement_id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES Users(user_id) ON DELETE CASCADE,
-    achievement_id INT REFERENCES Achievements(achievement_id) ON DELETE CASCADE,
-    achieved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Дата, когда достижение было получено
+CREATE TABLE "UserAchievements" (
+    "userAchievementId" SERIAL PRIMARY KEY,
+    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "achievementId" INT REFERENCES "Achievements"("achievementId") ON DELETE CASCADE,
+    "achievedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Таблица лайков за выполнение плана
-CREATE TABLE Likes (
-    like_id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES Users(user_id) ON DELETE CASCADE,
-    plan_id INT REFERENCES Plans(plan_id) ON DELETE CASCADE,
-    like_date DATE NOT NULL,  -- Дата, когда был начислен лайк
-    UNIQUE(user_id, plan_id, like_date),  -- Пользователь может получить только один лайк за план в день
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE "Likes" (
+    "likeId" SERIAL PRIMARY KEY,
+    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "planId" INT REFERENCES "Plans"("planId") ON DELETE CASCADE,
+    "likeType" VARCHAR(20) DEFAULT 'plan',
+    "likeDate" DATE NOT NULL,
+    UNIQUE("userId", "planId", "likeDate"),
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Таблица замороженных лайков для планов
-CREATE TABLE Frozen_Likes (
-    frozen_like_id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES Users(user_id) ON DELETE CASCADE,
-    plan_id INT REFERENCES Plans(plan_id) ON DELETE CASCADE,
-    freeze_start_date DATE NOT NULL,  -- Дата начала заморозки
-    freeze_end_date DATE,  -- Дата окончания заморозки, может быть NULL (если пользователь не указал конкретную дату)
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE "FrozenLikes" (
+    "frozenLikeId" SERIAL PRIMARY KEY,
+    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "planId" INT REFERENCES "Plans"("planId") ON DELETE CASCADE,
+    "freezeStartDate" DATE NOT NULL,
+    "freezeEndDate" DATE,
+    "isActive" BOOLEAN DEFAULT TRUE,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Таблица прогресса по выполнению обязательных задач плана
-CREATE TABLE Plan_Progress (
-    progress_id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES Users(user_id) ON DELETE CASCADE,
-    plan_id INT REFERENCES Plans(plan_id) ON DELETE CASCADE,
-    progress_date DATE NOT NULL,  -- Дата, за которую отслеживается прогресс
-    completed_tasks_count INT DEFAULT 0,  -- Количество выполненных задач за день
-    mandatory_tasks_count INT DEFAULT 0,  -- Количество обязательных задач в плане за день
-    all_tasks_completed BOOLEAN DEFAULT FALSE,  -- Логический флаг, выполнены ли все обязательные задачи
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, plan_id, progress_date)  -- Прогресс по плану уникален для одного дня
+CREATE TABLE "PlanProgress" (
+    "progressId" SERIAL PRIMARY KEY,
+    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "planId" INT REFERENCES "Plans"("planId") ON DELETE CASCADE,
+    "progressDate" DATE NOT NULL,
+    "completedTasksCount" INT DEFAULT 0,
+    "mandatoryTasksCount" INT DEFAULT 0,
+    "allTasksCompleted" BOOLEAN DEFAULT FALSE,
+    "planStatus" VARCHAR(20) DEFAULT 'in-progress',
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE("userId", "planId", "progressDate")
+);
+
+-- Таблица выполнения задач пользователями
+CREATE TABLE "TaskCompletion" (
+    "completionId" SERIAL PRIMARY KEY,
+    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "taskId" INT REFERENCES "Tasks"("taskId") ON DELETE CASCADE,
+    "completedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "status" VARCHAR(20) DEFAULT 'completed'
+);
+
+-- Таблица подписок пользователей на планы
+CREATE TABLE "UserSubscriptions" (
+    "subscriptionId" SERIAL PRIMARY KEY,
+    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "planId" INT REFERENCES "Plans"("planId"),
+    "subscriptionType" VARCHAR(50),
+    "startDate" DATE NOT NULL,
+    "endDate" DATE,
+    "isActive" BOOLEAN DEFAULT TRUE,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Таблица активности пользователей
+CREATE TABLE "ActivityTracker" (
+    "activityId" SERIAL PRIMARY KEY,
+    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "planId" INT REFERENCES "Plans"("planId"),
+    "activityDate" DATE NOT NULL,
+    "description" TEXT,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Таблица вызовов/челленджей между пользователями
+CREATE TABLE "Challenges" (
+    "challengeId" SERIAL PRIMARY KEY,
+    "creatorUserId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "targetUserId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "planId" INT REFERENCES "Plans"("planId"),
+    "description" TEXT,
+    "startDate" DATE NOT NULL,
+    "endDate" DATE,
+    "status" VARCHAR(20) DEFAULT 'pending',
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Таблица друзей/подписчиков пользователей
+CREATE TABLE "Friends" (
+    "friendshipId" SERIAL PRIMARY KEY,
+    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "friendId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "status" VARCHAR(20) DEFAULT 'pending',
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE("userId", "friendId")
 );

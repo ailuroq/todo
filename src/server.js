@@ -2,6 +2,7 @@ import fastify from 'fastify';
 import jwt from '@fastify/jwt';
 import cookie from '@fastify/cookie';
 import { fastifyMiddie } from '@fastify/middie';
+import { authenticate } from './api/middlewares/verifyJwt.js';
 
 export class Server {
   constructor(config, controllers) {
@@ -29,6 +30,8 @@ export class Server {
     this.controllers.forEach((controller) => {
       controller.registerRoutes(this.instance);
     });
+
+    this.instance.addHook('onRequest', authenticate);
 
     await this.instance.listen({
       host: this.config.host,
