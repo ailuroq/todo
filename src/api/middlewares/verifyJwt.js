@@ -1,15 +1,16 @@
 import jwt from 'jsonwebtoken';
-import config from '../config/config.js'; // Путь к вашему конфигурационному файлу, где хранится секретный ключ
+import config from '../config/config.js';
 
 // Middleware для проверки JWT
-export async function authenticate(request, reply) {
+export function authenticate(request, reply, next) {
   try {
     if (request.url === '/login' || request.url === '/register') {
-      return;
+      return next();
     }
 
     // Получение токена из заголовка Authorization
     const authHeader = request.headers['authorization'];
+
     if (!authHeader) {
       return reply.code(401).send({ message: 'Authorization header missing' });
     }
@@ -26,8 +27,8 @@ export async function authenticate(request, reply) {
       return reply.code(401).send({ message: 'Invalid token' });
     }
 
-    // Добавление информации о пользователе в объект request
-    request.user = decoded; // decoded содержит данные, которые были закодированы в токене (например, id, username, email и т.д.)
+    request.user = decoded;
+    return next();
   } catch (err) {
     // Обработка ошибок при проверке токена
     if (err.name === 'TokenExpiredError') {

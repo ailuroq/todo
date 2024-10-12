@@ -17,8 +17,8 @@ export class PlanRepository {
         query.where('category', '=', filter.category);
       }
 
-      if (filter.ownerId) {
-        query.where('ownerId', '=', filter.ownerId);
+      if (filter.userId) {
+        query.where('userId', '=', filter.userId);
       }
 
       if (sort.by && sort.order) {
@@ -37,18 +37,24 @@ export class PlanRepository {
   async getPlanById(planId) {
     try {
       const query = this.#knex('Plans')
-        .select('*')
-        .where('planId', '=', planId)
+        .select(
+          '*',
+          this.#knex.raw(`
+          (
+            SELECT json_agg(tasks)
+            FROM "Tasks" tasks
+            WHERE tasks."planId" = "Plans"."planId"
+          ) AS tasks
+        `)
+        )
+        .where('Plans.planId', '=', planId)
         .first()
         .toSQL()
         .toNative();
 
-
-      console.log(query)
-
       const [plan] = (await this.#pool.query(query.sql, query.bindings)).rows;
 
-      console.log(plan)
+      console.log(plan);
       return plan || null;
     } catch (err) {
       throw err;
@@ -98,11 +104,7 @@ export class PlanRepository {
   // Получение списка планов по ID пользователя
   async getPlansByUserId(userId) {
     try {
-      const query = this.#knex('Plans')
-        .select('*')
-        .where('ownerId', '=', userId)
-        .toSQL()
-        .toNative();
+      const query = this.#knex('Plans').select('*').where('userId', '=', userId).toSQL().toNative();
 
       const plans = (await this.#pool.query(query.sql, query.bindings)).rows;
       return plans;

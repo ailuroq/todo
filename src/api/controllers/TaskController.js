@@ -1,5 +1,3 @@
-import { NotFound, Unauthorized } from 'http-errors';
-
 export class TaskController {
   constructor(taskRepository, planRepository) {
     this.taskRepository = taskRepository;
@@ -13,7 +11,7 @@ export class TaskController {
       const plan = await this.planRepository.getPlanById(planId);
 
       if (!plan) {
-        throw new NotFound('Plan not found');
+        throw new Error('Plan not found');
       }
 
       const tasks = await this.taskRepository.getTasksByPlanId(planId);
@@ -26,19 +24,22 @@ export class TaskController {
   // Создание новой задачи в рамках плана
   async createTask(request, reply) {
     try {
+      console.log(request.user)
       const { planId } = request.params;
       const userId = request.user.id;
       const plan = await this.planRepository.getPlanById(planId);
 
       if (!plan) {
-        throw new NotFound('Plan not found');
+        throw new Error('Plan not found');
       }
 
-      if (plan.ownerId !== userId) {
-        throw new Unauthorized('You can only add tasks to your own plans');
+      console.log(plan)
+
+      if (plan.userId !== userId) {
+        throw new Error('You can only add tasks to your own plans');
       }
 
-      const taskData = { ...request.body, planId, ownerId: userId };
+      const taskData = { ...request.body, planId, userId };
       const newTask = await this.taskRepository.createTask(taskData);
       return reply.code(201).send(newTask);
     } catch (err) {
@@ -54,17 +55,17 @@ export class TaskController {
       const plan = await this.planRepository.getPlanById(planId);
 
       if (!plan) {
-        throw new NotFound('Plan not found');
+        throw new Error('Plan not found');
       }
 
-      if (plan.ownerId !== userId) {
-        throw new Unauthorized('You can only update tasks in your own plans');
+      if (plan.userId !== userId) {
+        throw new Error('You can only update tasks in your own plans');
       }
 
       const task = await this.taskRepository.getTaskById(taskId);
 
       if (!task || task.planId !== planId) {
-        throw new NotFound('Task not found in this plan');
+        throw new Error('Task not found in this plan');
       }
 
       const updatedTask = await this.taskRepository.updateTask(taskId, request.body);
@@ -82,17 +83,17 @@ export class TaskController {
       const plan = await this.planRepository.getPlanById(planId);
 
       if (!plan) {
-        throw new NotFound('Plan not found');
+        throw new Error('Plan not found');
       }
 
-      if (plan.ownerId !== userId) {
-        throw new Unauthorized('You can only delete tasks from your own plans');
+      if (plan.userId !== userId) {
+        throw new Error('You can only delete tasks from your own plans');
       }
 
       const task = await this.taskRepository.getTaskById(taskId);
 
       if (!task || task.planId !== planId) {
-        throw new NotFound('Task not found in this plan');
+        throw new Error('Task not found in this plan');
       }
 
       await this.taskRepository.deleteTask(taskId);

@@ -3,6 +3,7 @@ import jwt from '@fastify/jwt';
 import cookie from '@fastify/cookie';
 import { fastifyMiddie } from '@fastify/middie';
 import { authenticate } from './api/middlewares/verifyJwt.js';
+import { ErrorHandler } from './api/common/ErrorHandler.js';
 
 export class Server {
   constructor(config, controllers) {
@@ -26,6 +27,8 @@ export class Server {
       secret: this.config.jwtSecret,
       parseOptions: {},
     });
+
+    this.instance.setErrorHandler((error) => console.log(error));
 
     this.controllers.forEach((controller) => {
       controller.registerRoutes(this.instance);

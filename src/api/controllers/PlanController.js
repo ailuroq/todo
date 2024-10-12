@@ -1,3 +1,5 @@
+import { authenticate } from '../middlewares/verifyJwt.js';
+
 export class PlanController {
   constructor(planRepository) {
     this.planRepository = planRepository;
@@ -6,6 +8,7 @@ export class PlanController {
   // Получение списка планов с фильтрацией и сортировкой
   async getPlans(request) {
     try {
+      console.log(request.user);
       const { filter, sort } = request.query;
       const plans = await this.planRepository.getPlans(filter, sort);
       return plans;
@@ -31,7 +34,7 @@ export class PlanController {
   // Создание нового плана
   async createPlan(request, reply) {
     try {
-      const userId = 1; // Предполагается, что ID пользователя будет доступен в request.user
+      const userId = request.user.id;
       const planData = { ...request.body, userId };
       const newPlan = await this.planRepository.createPlan(planData);
       return reply.code(201).send(newPlan);
@@ -73,7 +76,7 @@ export class PlanController {
         throw new Error('Plan not found');
       }
 
-      if (existingPlan.ownerId !== userId) {
+      if (existingPlan.userId !== userId) {
         throw new Error('You can only delete your own plans');
       }
 

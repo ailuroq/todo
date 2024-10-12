@@ -5,6 +5,8 @@ import { UserRepository } from './infrastructure/repositories/UserRepository.js'
 import pg from 'pg';
 import { PlanRepository } from './infrastructure/repositories/PlanRepository.js';
 import { PlanController } from './api/controllers/PlanController.js';
+import { TaskController } from './api/controllers/TaskController.js';
+import { TaskRepository } from './infrastructure/repositories/TaskRepository.js';
 
 const PROCESS_STOP_EVENTS = ['unhandledRejection', 'SIGINT', 'SIGTERM'];
 
@@ -19,10 +21,12 @@ async function main() {
 
   const userRepository = new UserRepository(pool);
   const planRepository = new PlanRepository(pool);
+  const taskRepository = new TaskRepository(pool);
 
   const server = new Server(config.server, [
     new AuthController(userRepository),
     new PlanController(planRepository),
+    new TaskController(taskRepository, planRepository)
   ]);
 
   await server.start();

@@ -76,10 +76,10 @@ export class UserRepository {
     }
 
     const token = jwt.sign(
-      { id: user.id, username: user.username, email: user.email },
+      { id: user.userId, username: user.username, email: user.email },
       config.server.jwtSecret,
       {
-        expiresIn: '1h',
+        expiresIn: '24h',
       }
     );
 
