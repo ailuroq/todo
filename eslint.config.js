@@ -14,6 +14,10 @@ export default [
     plugins: {
       prettier: prettierPlugin,
     },
+    env: {
+      browser: true,
+      node: true
+    },
     rules: {
       'no-unused-vars': 'error',
       'no-undef': 'error',

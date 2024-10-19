@@ -1,5 +1,3 @@
-import { authenticate } from '../middlewares/verifyJwt.js';
-
 export class PlanController {
   constructor(planRepository) {
     this.planRepository = planRepository;
@@ -8,7 +6,6 @@ export class PlanController {
   // Получение списка планов с фильтрацией и сортировкой
   async getPlans(request) {
     try {
-      console.log(request.user);
       const { filter, sort } = request.query;
       const plans = await this.planRepository.getPlans(filter, sort);
       return plans;

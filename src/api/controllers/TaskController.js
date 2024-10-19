@@ -24,7 +24,6 @@ export class TaskController {
   // Создание новой задачи в рамках плана
   async createTask(request, reply) {
     try {
-      console.log(request.user)
       const { planId } = request.params;
       const userId = request.user.id;
       const plan = await this.planRepository.getPlanById(planId);
@@ -32,8 +31,6 @@ export class TaskController {
       if (!plan) {
         throw new Error('Plan not found');
       }
-
-      console.log(plan)
 
       if (plan.userId !== userId) {
         throw new Error('You can only add tasks to your own plans');

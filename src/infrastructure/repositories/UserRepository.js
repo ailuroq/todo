@@ -79,7 +79,7 @@ export class UserRepository {
       { id: user.userId, username: user.username, email: user.email },
       config.server.jwtSecret,
       {
-        expiresIn: '24h',
+        expiresIn: '124h',
       }
     );
 

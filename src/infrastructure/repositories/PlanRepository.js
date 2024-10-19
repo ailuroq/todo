@@ -53,8 +53,6 @@ export class PlanRepository {
         .toNative();
 
       const [plan] = (await this.#pool.query(query.sql, query.bindings)).rows;
-
-      console.log(plan);
       return plan || null;
     } catch (err) {
       throw err;
