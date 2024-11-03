@@ -26,6 +26,7 @@
     "fastify-jwt": "^4.2.0",
     "http-errors": "^2.0.0",
     "jsonwebtoken": "^9.0.2",
+    "knex": "^3.1.0",
     "pg": "^8.13.0"
   },
   "devDependencies": {

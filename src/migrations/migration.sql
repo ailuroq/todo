@@ -57,6 +57,45 @@ CREATE TABLE "Tasks" (
     "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE "OriginalPlans" (
+    "planId" SERIAL PRIMARY KEY,
+    "userId" INT REFERENCES "Users"("userId"),
+    "title" VARCHAR(255) NOT NULL,
+    "description" TEXT,
+    "details" TEXT,
+    "category" VARCHAR(50),
+    "isPublic" BOOLEAN DEFAULT TRUE,
+    "likesCount" INT DEFAULT 0,
+    "version" INT DEFAULT 1,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "OriginalTasks" (
+    "taskId" SERIAL PRIMARY KEY,
+    "planId" INT REFERENCES "OriginalPlans"("planId") ON DELETE CASCADE,
+    "userId" INT REFERENCES "Users"("userId") ON DELETE SET NULL,
+    "title" VARCHAR(255) NOT NULL,
+    "description" TEXT,
+    "taskOrder" INT,
+    "dayNumber" INT,
+    "durationMinutes" INT,
+    "isRepeating" BOOLEAN DEFAULT FALSE,
+    "isMandatory" BOOLEAN DEFAULT FALSE,
+    "repeatType" VARCHAR(50),
+    "repeatDays" VARCHAR(50),
+    "tagId" INT REFERENCES "Tags"("tagId"),
+    "startTime" TIME,
+    "endTime" TIME,
+    "status" VARCHAR(50) DEFAULT 'pending',
+    "calories" DECIMAL(10, 2),
+    "protein" DECIMAL(10, 2),
+    "carbs" DECIMAL(10, 2),
+    "fats" DECIMAL(10, 2),
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Таблица уведомлений
 CREATE TABLE "Notifications" (
     "notificationId" SERIAL PRIMARY KEY,
