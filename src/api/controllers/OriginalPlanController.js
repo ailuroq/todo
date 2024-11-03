@@ -72,7 +72,7 @@ export class OriginalPlanController {
         throw new Error('Plan not found');
       }
 
-      const updatedPlan = await this.planRepository.startPlan(planId, request.body);
+      const updatedPlan = await this.planRepository.startPlan(userId, planId);
       return updatedPlan;
     } catch (err) {
       throw err;
@@ -167,8 +167,8 @@ export class OriginalPlanController {
     });
 
     instance.route({
-      url: '/original/plans/start',
-      method: 'PUT',
+      url: '/original/plans/:planId/start',
+      method: 'POST',
       handler: this.startPlan.bind(this),
       schema: {
         tags: ['Plans'],

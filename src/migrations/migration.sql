@@ -53,6 +53,7 @@ CREATE TABLE "Tasks" (
     "protein" DECIMAL(10, 2),
     "carbs" DECIMAL(10, 2),
     "fats" DECIMAL(10, 2),
+    "date" DATE,
     "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

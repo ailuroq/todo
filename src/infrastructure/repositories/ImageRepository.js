@@ -23,7 +23,6 @@ export class ImageRepository {
         .toNative();
 
       const result = await this.#pool.query(query.sql, query.bindings);
-      console.log(result)
 
       // Delete the temporary file
       fs.unlinkSync(filePath);
@@ -43,8 +42,6 @@ export class ImageRepository {
         .toNative();
 
       const result = await this.#pool.query(query.sql, query.bindings);
-
-      console.log(result)
 
       return result.rows[0];
     } catch (err) {
