@@ -59,6 +59,31 @@ export class PlanRepository {
     }
   }
 
+  async getCurrentUserPlan(userId) {
+    try {
+      const query = this.#knex('Plans')
+        .select(
+          '*',
+          this.#knex.raw(`
+          (
+            SELECT json_agg(tasks)
+            FROM "Tasks" tasks
+            WHERE tasks."planId" = "Plans"."planId"
+          ) AS tasks
+        `)
+        )
+        .where('Plans.userId', '=', userId)
+        .first()
+        .toSQL()
+        .toNative();
+
+      const [plan] = (await this.#pool.query(query.sql, query.bindings)).rows;
+      return plan || null;
+    } catch (err) {
+      throw err;
+    }
+  }
+
   // Создание нового плана
   async createPlan(planData) {
     try {

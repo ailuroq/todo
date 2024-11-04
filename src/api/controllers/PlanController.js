@@ -28,6 +28,22 @@ export class PlanController {
     }
   }
 
+  async getCurrentUserPlan(request) {
+    try {
+      const { id } = request.user;
+
+      const plan = await this.planRepository.getCurrentUserPlan(id);
+
+      if (!plan) {
+        throw new Error('Plan not found');
+      }
+
+      return plan;
+    } catch (err) {
+      throw err;
+    }
+  }
+
   // Создание нового плана
   async createPlan(request, reply) {
     try {
@@ -109,6 +125,22 @@ export class PlanController {
           properties: {
             filter: { type: 'string' },
             sort: { type: 'string' },
+          },
+        },
+      },
+    });
+
+    instance.route({
+      url: '/plans/user',
+      method: 'GET',
+      handler: this.getCurrentUserPlan.bind(this),
+      schema: {
+        tags: ['Plans'],
+        description: 'Get detailed information about a plan by ID',
+        params: {
+          type: 'object',
+          properties: {
+            planId: { type: 'string' },
           },
         },
       },
