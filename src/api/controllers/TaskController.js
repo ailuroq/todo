@@ -47,21 +47,11 @@ export class TaskController {
   // Обновление задачи
   async updateTask(request, reply) {
     try {
-      const { planId, taskId } = request.params;
-      const userId = request.user.id;
-      const plan = await this.planRepository.getPlanById(planId);
-
-      if (!plan) {
-        throw new Error('Plan not found');
-      }
-
-      if (plan.userId !== userId) {
-        throw new Error('You can only update tasks in your own plans');
-      }
+      const { taskId } = request.params;
 
       const task = await this.taskRepository.getTaskById(taskId);
 
-      if (!task || task.planId !== planId) {
+      if (!task) {
         throw new Error('Task not found in this plan');
       }
 
@@ -144,7 +134,7 @@ export class TaskController {
     });
 
     instance.route({
-      url: '/plans/:planId/tasks/:taskId',
+      url: '/plans/tasks/:taskId',
       method: 'PUT',
       handler: this.updateTask.bind(this),
       schema: {

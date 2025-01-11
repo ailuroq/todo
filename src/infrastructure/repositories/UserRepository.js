@@ -77,10 +77,7 @@ export class UserRepository {
 
     const token = jwt.sign(
       { id: user.userId, username: user.username, email: user.email },
-      config.server.jwtSecret,
-      {
-        expiresIn: '124h',
-      }
+      config.server.jwtSecret
     );
 
     return {
@@ -92,5 +89,57 @@ export class UserRepository {
         email: user.email,
       },
     };
+  }
+
+  async getUserById(userId) {
+    const getUserInfoQuery = this.#knex
+      .queryBuilder()
+      .select('username', 'email', 'userId')
+      .from('Users')
+      .where('userId', '=', userId)
+      .first()
+      .toSQL()
+      .toNative();
+
+    const userPlanQuery = this.#knex('Plans')
+      .select(
+        '*',
+        this.#knex.raw(`
+        (
+          SELECT json_agg(tasks)
+          FROM "Tasks" tasks
+          WHERE tasks."planId" = "Plans"."planId"
+          AND tasks."date" = CURRENT_DATE
+          AND "Plans"."isActive" = true
+        ) AS "todayTasks"
+      `)
+      )
+      .where('Plans.userId', '=', userId)
+      .where('Plans.isActive', '=', true)
+      .first()
+      .toSQL()
+      .toNative();
+
+    const userOriginalPlanQuery = this.#knex('OriginalPlans')
+      .select(
+        '*'
+      )
+      .where('userId', '=', userId)
+      .toSQL()
+      .toNative();
+
+    const [user] = (await this.#pool.query(getUserInfoQuery.sql, getUserInfoQuery.bindings)).rows;
+    const [userPlan] = (await this.#pool.query(userPlanQuery.sql, userPlanQuery.bindings)).rows;
+    const userOriginalPlans = (await this.#pool.query(userOriginalPlanQuery.sql, userOriginalPlanQuery.bindings)).rows;
+
+    if (!userPlan.todayTasks) {
+      userPlan.todayTasks = [];
+    }
+
+    return {
+      user,
+      userPlan,
+      userOriginalPlans,
+    }
   }
 }

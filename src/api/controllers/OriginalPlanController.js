@@ -1,3 +1,8 @@
+import { pipeline as pipelineCallback } from 'stream';
+const pipeline = promisify(pipelineCallback);
+import fs from 'fs';
+import path from 'path';
+import { promisify } from 'util';
 export class OriginalPlanController {
   constructor(planRepository) {
     this.planRepository = planRepository;
@@ -31,10 +36,61 @@ export class OriginalPlanController {
   // Создание нового плана
   async createPlan(request, reply) {
     try {
-      const userId = request.user.id;
-      const planData = { ...request.body, userId };
-      const newPlan = await this.planRepository.createPlan(planData);
-      return reply.code(201).send(newPlan);
+      const parts = request.parts();
+      const plan = {
+        title: '',
+        description: '',
+        tags: [],
+        tasks: [],
+      };
+  
+      // Обрабатываем части запроса
+      for await (const part of parts) {
+        if (part.file) {
+          // Обработка файлов (изображений)
+          const filename = part.filename;
+          const filePath = `./uploads/${filename}`;
+          await pipeline(part.file, fs.createWriteStream(filePath));
+  
+          // Сохраняем изображение в соответствующую задачу
+          const match = part.fieldname.match(/tasks\[(\d+)]\[image\]/);
+          if (match) {
+            const taskIndex = parseInt(match[1], 10);
+            plan.tasks[taskIndex] = plan.tasks[taskIndex] || {};
+            plan.tasks[taskIndex].image = filePath;
+          }
+        } else {
+          // Обработка текстовых данных
+          const fieldname = part.fieldname;
+          const value = part.value;
+  
+          if (fieldname === 'title') {
+            plan.title = value;
+          } else if (fieldname === 'description') {
+            plan.description = value;
+          } else if (fieldname === 'tags') {
+            plan.tags = JSON.parse(value);
+          } else {
+            const match = fieldname.match(/tasks\[(\d+)]\[(.+)\]/);
+            if (match) {
+              const taskIndex = parseInt(match[1], 10);
+              const key = match[2];
+  
+              plan.tasks[taskIndex] = plan.tasks[taskIndex] || {};
+              plan.tasks[taskIndex][key] = key.includes('is')
+                ? value === 'true'
+                : value;
+            }
+          }
+        }
+      }
+
+
+      console.log('request321plan', plan)
+      // const userId = request.user.id;
+      // const planData = { ...request.body, userId };
+      // const newPlan = await this.planRepository.createPlanFromUser(planData);
+      // return reply.code(201).send(newPlan);
     } catch (err) {
       throw err;
     }
@@ -151,19 +207,6 @@ export class OriginalPlanController {
       url: '/original/plans',
       method: 'POST',
       handler: this.createPlan.bind(this),
-      schema: {
-        tags: ['Plans'],
-        description: 'Create a new plan',
-        body: {
-          type: 'object',
-          properties: {
-            title: { type: 'string' },
-            description: { type: 'string' },
-            category: { type: 'string' },
-          },
-          required: ['title', 'description'],
-        },
-      },
     });
 
     instance.route({

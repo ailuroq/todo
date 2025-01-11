@@ -59,6 +59,14 @@ export class OriginalPlanRepository {
     }
   }
 
+  async createPlanFromUser(planData) {
+    try {
+      console.log(planData)
+    } catch (err) {
+      throw(err);
+    }
+  }
+
   // Создание нового плана
   async createPlan(planData) {
     try {
@@ -95,7 +103,9 @@ export class OriginalPlanRepository {
 
       // Modify the selected plan data as necessary (e.g., with the new userId)
       const newPlanData = {
-        userId: userId,                 // Assign the current user ID
+        userId: userId,
+        originalPlanId: planId,
+        isActive: true,
         title: originalPlan.title,
         description: originalPlan.description,
         details: originalPlan.details,
@@ -126,6 +136,7 @@ export class OriginalPlanRepository {
           'ot.durationMinutes',
           'ot.isRepeating',
           'ot.isMandatory',
+          'ot.isMeal',
           'ot.repeatType',
           'ot.repeatDays',
           'ot.tagId',
@@ -149,8 +160,7 @@ export class OriginalPlanRepository {
       const tasksToInsert = selectedTasks.map(task => {
         // Calculate the specific date based on startDate and dayNumber
         const date = new Date();
-        date.setDate(date.getDate() + task.dayNumber);
-
+        date.setDate(date.getDate() + task.dayNumber - 1);
         return {
           planId: newPlanId,
           userId: userId,
@@ -160,6 +170,7 @@ export class OriginalPlanRepository {
           durationMinutes: task.durationMinutes,
           isRepeating: task.isRepeating,
           isMandatory: task.isMandatory,
+          isMeal: task.isMeal,
           repeatType: task.repeatType,
           repeatDays: task.repeatDays,
           tagId: task.tagId,
@@ -183,14 +194,20 @@ export class OriginalPlanRepository {
         .toSQL()
         .toNative();
 
+      const setOtherPlansNotActive = this.#knex('Plans')
+        .update('isActive', false)
+        .where('Plans.planId', '<>', newPlanId)
+        .toSQL()
+        .toNative()
+
       const insertedTasks = (await this.#pool.query(insertQuery.sql, insertQuery.bindings)).rows;
+      const updatedPlans = (await this.#pool.query(setOtherPlansNotActive.sql, setOtherPlansNotActive.bindings)).rows;
 
       // Commit transaction
       //await trx.commit();
-      console.log("Tasks copied successfully.");
-
       return insertedTasks;
     } catch (err) {
+      console.log(err)
       throw err;
     }
   }

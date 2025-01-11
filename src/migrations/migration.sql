@@ -23,6 +23,8 @@ CREATE TABLE "Plans" (
     "version" INT DEFAULT 1,
     "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    "isActive" BOOLEAN DEFAULT FALSE,
+    "originalPlanId" INT REFERENCES "OriginalPlans"("planId")
 );
 
 -- Таблица тегов для задач
@@ -43,6 +45,7 @@ CREATE TABLE "Tasks" (
     "durationMinutes" INT,
     "isRepeating" BOOLEAN DEFAULT FALSE,
     "isMandatory" BOOLEAN DEFAULT FALSE,
+    "isMeal" BOOLEAN DEFAULT FALSE,
     "repeatType" VARCHAR(50),
     "repeatDays" VARCHAR(50),
     "tagId" INT REFERENCES "Tags"("tagId"),
@@ -83,6 +86,7 @@ CREATE TABLE "OriginalTasks" (
     "durationMinutes" INT,
     "isRepeating" BOOLEAN DEFAULT FALSE,
     "isMandatory" BOOLEAN DEFAULT FALSE,
+    "isMeal" BOOLEAN DEFAULT FALSE,
     "repeatType" VARCHAR(50),
     "repeatDays" VARCHAR(50),
     "tagId" INT REFERENCES "Tags"("tagId"),

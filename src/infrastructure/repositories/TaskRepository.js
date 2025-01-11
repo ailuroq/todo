@@ -1,4 +1,5 @@
 import Knex from 'knex';
+import { openai } from '../../openai.js';
 
 export class TaskRepository {
   #knex = Knex({ client: 'pg' });
@@ -54,6 +55,32 @@ export class TaskRepository {
   async createTask(taskData) {
     try {
       const query = this.#knex('Tasks').insert(taskData).returning('*').toSQL().toNative();
+
+      if (taskData.isMeal) {
+
+      // const response = await openai.chat.completions.create({
+      //   model: 'gpt-4o-mini',
+      //   messages: [
+      //     {
+      //       role: 'system',
+      //       content: `
+      //         Ты нутриционист. Твоя задача — анализировать описания блюд и возвращать информацию о БЖУ (белках, жирах, углеводах) и калориях в формате JSON. Если информация неточная, используй средние значения. Всегда рассчитывай для 100 грамм блюда.
+      //         Формат ответа:
+      //         {
+      //           "calories": число (ккал),
+      //           "proteins": число (грамм),
+      //           "fats": число (грамм),
+      //           "carbohydrates": число (грамм),
+      //         }
+      //       `,
+      //     },
+      //     { role: 'user', content: `Проанализируй блюдо: жареная картошка` },
+      //   ],
+      // });
+  
+      // const structuredData = JSON.parse(response.choices[0].message.content);
+      // console.log(structuredData)
+      }
 
       const newTask = (await this.#pool.query(query.sql, query.bindings)).rows;
       return newTask[0];

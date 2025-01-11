@@ -28,7 +28,11 @@ export class Server {
       parseOptions: {},
     });
 
-    this.instance.register(fastifyMultipart);
+    this.instance.register(fastifyMultipart, {
+      limits: {
+        fileSize: 10 * 1024 * 1024
+      }
+    });
 
     this.instance.setErrorHandler((error) => console.log(error));
 

@@ -69,10 +69,12 @@ export class PlanRepository {
             SELECT json_agg(tasks)
             FROM "Tasks" tasks
             WHERE tasks."planId" = "Plans"."planId"
+            AND "Plans"."isActive" = true
           ) AS tasks
         `)
         )
         .where('Plans.userId', '=', userId)
+        .where('Plans.isActive', '=', true)
         .first()
         .toSQL()
         .toNative();

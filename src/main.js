@@ -13,6 +13,7 @@ import { OriginalPlanRepository } from './infrastructure/repositories/OriginalPl
 import { OriginalTaskRepository } from './infrastructure/repositories/OriginalTaskRepository.js';
 import { OriginalPlanController } from './api/controllers/OriginalPlanController.js';
 import { OriginalTaskController } from './api/controllers/OriginalTaskController.js';
+import { UserController } from './api/controllers/UserController.js';
 
 const PROCESS_STOP_EVENTS = ['unhandledRejection', 'SIGINT', 'SIGTERM'];
 
@@ -39,6 +40,7 @@ async function main() {
     new TaskController(taskRepository, planRepository),
     new OriginalTaskController(originalTaskRepository, originalPlanRepository),
     new ImageController(imageRepository),
+    new UserController(userRepository),
   ]);
 
   await server.start();
