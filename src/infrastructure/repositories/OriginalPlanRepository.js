@@ -1,4 +1,9 @@
 import Knex from 'knex';
+import fs from 'fs';
+import path from 'path';
+import { promisify } from 'util';
+import { pipeline as pipelineCallback } from 'stream';
+const pipeline = promisify(pipelineCallback);
 
 export class OriginalPlanRepository {
   #knex = Knex({ client: 'pg' });
@@ -9,24 +14,25 @@ export class OriginalPlanRepository {
   }
 
   // Получение списка планов с возможной фильтрацией и сортировкой
-  async getPlans(filter = {}, sort = {}) {
+  async getPlans(filter = {}, sort = {}, searchQuery, categories) {
     try {
-      const query = this.#knex('OriginalPlans').select('*');
+      const sqlQuery = this.#knex('OriginalPlans')
+      .select('*')
+      .where(function () {
+        if (searchQuery) {
+          this.whereRaw('LOWER(title) ILIKE ?', [`%${searchQuery.toLowerCase()}%`])
+          .orWhereRaw('LOWER(description) ILIKE ?', [`%${searchQuery.toLowerCase()}%`]);
+        }
 
-      if (filter.category) {
-        query.where('category', '=', filter.category);
-      }
+        if (categories && categories.length > 0) {
+          this.whereIn('category', categories);
+        }
+      })
+      .toSQL()
+      .toNative();
 
-      if (filter.userId) {
-        query.where('userId', '=', filter.userId);
-      }
-
-      if (sort.by && sort.order) {
-        query.orderBy(sort.by, sort.order);
-      }
-
-      const sqlQuery = query.toSQL().toNative();
       const plans = (await this.#pool.query(sqlQuery.sql, sqlQuery.bindings)).rows;
+
       return plans;
     } catch (err) {
       throw err;
@@ -59,9 +65,59 @@ export class OriginalPlanRepository {
     }
   }
 
-  async createPlanFromUser(planData) {
+  async createPlanFromUser(planData, userId) {
     try {
-      console.log(planData)
+      const insertOriginalPlanQuery = this.#knex
+        .queryBuilder()
+        .insert({
+          userId,
+          title: planData.title,
+          description: planData.description,
+        })
+        .into('OriginalPlans')
+        .returning('planId')
+        .toSQL()
+        .toNative();
+
+      const planInsertResult = await this.#pool.query(insertOriginalPlanQuery.sql, insertOriginalPlanQuery.bindings);
+
+      const insertOriginalTasksQuery = this.#knex
+        .queryBuilder()
+        .insert(planData.tasks.map((item) => ({
+          planId: planInsertResult.rows[0].planId,
+          title: item.title,
+          description: item.description,
+          dayNumber: item.dayNumber,
+          isMandatory: item.isMandatory,
+          userId,
+          image: item.image
+        })))
+        .into('OriginalTasks')
+        .returning('*')
+        .toSQL()
+        .toNative();
+
+      const tasksInsertResult = await this.#pool.query(insertOriginalTasksQuery.sql, insertOriginalTasksQuery.bindings);
+
+      const insertOriginalImages = this.#knex
+        .queryBuilder()
+        .insert(planData.tasks.map((item) => {
+          const fileData = fs.readFileSync(item.image);
+
+          return {
+            originalPlanId: planInsertResult.rows[0].planId,
+            originalTaskId: item.taskId,
+            imageData: fileData,
+            userId,
+          }
+        }))
+        .into('Images')
+        .returning('*')
+        .toSQL()
+        .toNative();
+
+      await this.#pool.query(insertOriginalImages.sql, insertOriginalImages.bindings);
+
     } catch (err) {
       throw(err);
     }

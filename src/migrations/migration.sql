@@ -221,3 +221,17 @@ CREATE TABLE "Friends" (
     "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE("userId", "friendId")
 );
+
+CREATE TABLE images (
+    id SERIAL PRIMARY KEY,                -- Уникальный идентификатор изображения
+    image_data BYTEA NOT NULL,            -- Содержимое изображения в бинарном формате
+    plan_id INTEGER,                      -- ID плана, к которому относится изображение
+    task_id INTEGER,                      -- ID задачи, к которой относится изображение
+    uploader_id INTEGER,                  -- ID пользователя, который загрузил изображение
+    image_type VARCHAR(50),               -- Тип изображения (например, "обложка", "иллюстрация")
+    created_at TIMESTAMP DEFAULT NOW(),   -- Дата загрузки изображения
+    updated_at TIMESTAMP DEFAULT NOW(),   -- Дата последнего обновления
+    CONSTRAINT fk_plan FOREIGN KEY (plan_id) REFERENCES plans (id) ON DELETE CASCADE,
+    CONSTRAINT fk_task FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE,
+    CONSTRAINT fk_uploader FOREIGN KEY (uploader_id) REFERENCES users (id) ON DELETE CASCADE
+);

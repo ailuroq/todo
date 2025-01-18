@@ -1,8 +1,8 @@
 import { pipeline as pipelineCallback } from 'stream';
 const pipeline = promisify(pipelineCallback);
 import fs from 'fs';
-import path from 'path';
 import { promisify } from 'util';
+import sharp from 'sharp';
 export class OriginalPlanController {
   constructor(planRepository) {
     this.planRepository = planRepository;
@@ -11,8 +11,13 @@ export class OriginalPlanController {
   // Получение списка планов с фильтрацией и сортировкой
   async getPlans(request) {
     try {
-      const { filter, sort } = request.query;
-      const plans = await this.planRepository.getPlans(filter, sort);
+      const { filter, sort, searchQuery, categories } = request.query;
+
+      const parsedCategories = categories
+        ? categories.split(',')
+        : []
+
+      const plans = await this.planRepository.getPlans(filter, sort, searchQuery, parsedCategories);
       return plans;
     } catch (err) {
       throw err;
@@ -37,6 +42,7 @@ export class OriginalPlanController {
   async createPlan(request, reply) {
     try {
       const parts = request.parts();
+      const userId = request.user.id;
       const plan = {
         title: '',
         description: '',
@@ -49,21 +55,33 @@ export class OriginalPlanController {
         if (part.file) {
           // Обработка файлов (изображений)
           const filename = part.filename;
-          const filePath = `./uploads/${filename}`;
-          await pipeline(part.file, fs.createWriteStream(filePath));
-  
-          // Сохраняем изображение в соответствующую задачу
+          const originalFilePath = `./uploads/original_${filename}`;
+          const compressedFilePath = `./uploads/${filename}`;
+          
+          // Сохраняем оригинал
+          await pipeline(part.file, fs.createWriteStream(originalFilePath));
+      
+          // Сжимаем изображение
+          await sharp(originalFilePath)
+            .resize({ width: 1024 }) // Изменяем размер до ширины 1024 пикселей (если нужно)
+            .jpeg({ quality: 80 })  // Сохраняем в формате JPEG с качеством 80%
+            .toFile(compressedFilePath);
+      
+          // Удаляем оригинал, если больше не нужен
+          fs.unlinkSync(originalFilePath);
+      
+          // Сохраняем путь к сжатому изображению в задачу
           const match = part.fieldname.match(/tasks\[(\d+)]\[image\]/);
           if (match) {
             const taskIndex = parseInt(match[1], 10);
             plan.tasks[taskIndex] = plan.tasks[taskIndex] || {};
-            plan.tasks[taskIndex].image = filePath;
+            plan.tasks[taskIndex].image = compressedFilePath;
           }
         } else {
           // Обработка текстовых данных
           const fieldname = part.fieldname;
           const value = part.value;
-  
+      
           if (fieldname === 'title') {
             plan.title = value;
           } else if (fieldname === 'description') {
@@ -75,7 +93,7 @@ export class OriginalPlanController {
             if (match) {
               const taskIndex = parseInt(match[1], 10);
               const key = match[2];
-  
+      
               plan.tasks[taskIndex] = plan.tasks[taskIndex] || {};
               plan.tasks[taskIndex][key] = key.includes('is')
                 ? value === 'true'
@@ -86,11 +104,9 @@ export class OriginalPlanController {
       }
 
 
-      console.log('request321plan', plan)
-      // const userId = request.user.id;
-      // const planData = { ...request.body, userId };
-      // const newPlan = await this.planRepository.createPlanFromUser(planData);
-      // return reply.code(201).send(newPlan);
+      await this.planRepository.createPlanFromUser(plan, userId);
+
+      return reply.code(201);
     } catch (err) {
       throw err;
     }
@@ -181,6 +197,7 @@ export class OriginalPlanController {
           type: 'object',
           properties: {
             filter: { type: 'string' },
+            searchQuery: { type: 'string' },
             sort: { type: 'string' },
           },
         },
