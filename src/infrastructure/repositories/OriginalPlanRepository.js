@@ -1,9 +1,5 @@
 import Knex from 'knex';
 import fs from 'fs';
-import path from 'path';
-import { promisify } from 'util';
-import { pipeline as pipelineCallback } from 'stream';
-const pipeline = promisify(pipelineCallback);
 
 export class OriginalPlanRepository {
   #knex = Knex({ client: 'pg' });
@@ -28,6 +24,8 @@ export class OriginalPlanRepository {
           this.whereIn('category', categories);
         }
       })
+      .innerJoin('Users', 'OriginalPlans.userId', 'Users.userId')
+      .orderBy('OriginalPlans.likesCount', 'desc')
       .toSQL()
       .toNative();
 
@@ -49,6 +47,7 @@ export class OriginalPlanRepository {
           (
             SELECT json_agg(tasks)
             FROM "OriginalTasks" tasks
+            LEFT JOIN "Images" ON "Images"."originalTaskId" = tasks."taskId"
             WHERE tasks."planId" = "OriginalPlans"."planId"
           ) AS tasks
         `)
@@ -59,6 +58,10 @@ export class OriginalPlanRepository {
         .toNative();
 
       const [plan] = (await this.#pool.query(query.sql, query.bindings)).rows;
+
+      // const tasks = plan.tasks.map((task) => {
+      //   task.
+      // })
       return plan || null;
     } catch (err) {
       throw err;
@@ -81,44 +84,30 @@ export class OriginalPlanRepository {
 
       const planInsertResult = await this.#pool.query(insertOriginalPlanQuery.sql, insertOriginalPlanQuery.bindings);
 
-      const insertOriginalTasksQuery = this.#knex
-        .queryBuilder()
-        .insert(planData.tasks.map((item) => ({
-          planId: planInsertResult.rows[0].planId,
-          title: item.title,
-          description: item.description,
-          dayNumber: item.dayNumber,
-          isMandatory: item.isMandatory,
-          userId,
-          image: item.image
-        })))
-        .into('OriginalTasks')
-        .returning('*')
-        .toSQL()
-        .toNative();
-
-      const tasksInsertResult = await this.#pool.query(insertOriginalTasksQuery.sql, insertOriginalTasksQuery.bindings);
-
-      const insertOriginalImages = this.#knex
-        .queryBuilder()
-        .insert(planData.tasks.map((item) => {
-          const fileData = fs.readFileSync(item.image);
-
-          return {
-            originalPlanId: planInsertResult.rows[0].planId,
-            originalTaskId: item.taskId,
-            imageData: fileData,
+      const insertOriginalTasksQuery = 
+          this.#knex
+          .queryBuilder()
+          .insert(planData.tasks.map((item) => ({
+            planId: planInsertResult.rows[0].planId,
+            title: item.title,
+            description: item.description,
+            dayNumber: item.dayNumber,
+            isMandatory: item.isMandatory,
+            mainImageLink: item.images,
             userId,
-          }
-        }))
-        .into('Images')
-        .returning('*')
-        .toSQL()
-        .toNative();
+          })))
+          .into('OriginalTasks')
+          .returning('*')
+          .toSQL()
+          .toNative();
 
-      await this.#pool.query(insertOriginalImages.sql, insertOriginalImages.bindings);
+
+      const [tasksInsertResult] = (await this.#pool.query(insertOriginalTasksQuery.sql, insertOriginalTasksQuery.bindings)).rows;
+
+      return planInsertResult.rows[0].planId;
 
     } catch (err) {
+      console.log(err)
       throw(err);
     }
   }
@@ -137,27 +126,26 @@ export class OriginalPlanRepository {
 
   // Обновление существующего плана по ID
   async startPlan(userId, planId) {
-    //const trx = await this.#knex.transaction();
-
     try {
+      // Шаг 1: Выбор оригинального плана
       const selectPlanQuery = this.#knex('OriginalPlans')
-      .select(
-        'userId',
-        'title',
-        'description',
-        'details',
-        'category',
-        'isPublic',
-        'likesCount',
-        'version'
-      )
-      .where('planId', planId)
-      .toSQL()
-      .toNative();
-
+        .select(
+          'userId',
+          'title',
+          'description',
+          'details',
+          'category',
+          'isPublic',
+          'likesCount',
+          'version'
+        )
+        .where('planId', planId)
+        .toSQL()
+        .toNative();
+  
       const originalPlan = (await this.#pool.query(selectPlanQuery.sql, selectPlanQuery.bindings)).rows[0];
-
-      // Modify the selected plan data as necessary (e.g., with the new userId)
+  
+      // Создание нового плана
       const newPlanData = {
         userId: userId,
         originalPlanId: planId,
@@ -170,25 +158,27 @@ export class OriginalPlanRepository {
         likesCount: originalPlan.likesCount,
         version: originalPlan.version,
         createdAt: this.#knex.fn.now(),
-        updatedAt: this.#knex.fn.now()
+        updatedAt: this.#knex.fn.now(),
       };
-
-      // Step 2: Insert the new plan into Plans table
+  
       const insertPlanQuery = this.#knex('Plans')
         .insert(newPlanData)
         .returning('*')
         .toSQL()
         .toNative();
-
+  
       const newPlan = (await this.#pool.query(insertPlanQuery.sql, insertPlanQuery.bindings)).rows[0];
       const newPlanId = newPlan.planId;
-
+  
+      // Шаг 2: Копирование задач
       const selectQuery = this.#knex('OriginalTasks as ot')
         .join('OriginalPlans as op', 'ot.planId', 'op.planId')
         .select(
+          'ot.taskId AS originalTaskId',
           'ot.title',
           'ot.description',
           'ot.taskOrder',
+          'ot.mainImageLink',
           'ot.durationMinutes',
           'ot.isRepeating',
           'ot.isMandatory',
@@ -208,13 +198,10 @@ export class OriginalPlanRepository {
         .where('op.planId', planId)
         .toSQL()
         .toNative();
-      
-      // Execute the select query within the transaction
+  
       const selectedTasks = (await this.#pool.query(selectQuery.sql, selectQuery.bindings)).rows;
-
-      // Step 2: Map the tasks for insertion
+  
       const tasksToInsert = selectedTasks.map(task => {
-        // Calculate the specific date based on startDate and dayNumber
         const date = new Date();
         date.setDate(date.getDate() + task.dayNumber - 1);
         return {
@@ -230,6 +217,7 @@ export class OriginalPlanRepository {
           repeatType: task.repeatType,
           repeatDays: task.repeatDays,
           tagId: task.tagId,
+          mainImageLink: task.mainImageLink,
           startTime: task.startTime,
           endTime: task.endTime,
           status: task.status,
@@ -239,34 +227,34 @@ export class OriginalPlanRepository {
           fats: task.fats,
           createdAt: this.#knex.fn.now(),
           updatedAt: this.#knex.fn.now(),
-          date: date
+          date: date,
+          originalTaskId: task.originalTaskId, // Добавляем для связи
         };
       });
-
-      // Step 3: Insert the mapped tasks within the transaction
+  
       const insertQuery = this.#knex('Tasks')
         .insert(tasksToInsert)
-        .returning('*')
+        .returning(['taskId', 'originalTaskId'])
         .toSQL()
         .toNative();
-
+  
+      const insertedTasks = (await this.#pool.query(insertQuery.sql, insertQuery.bindings)).rows;
+  
       const setOtherPlansNotActive = this.#knex('Plans')
         .update('isActive', false)
         .where('Plans.planId', '<>', newPlanId)
         .toSQL()
-        .toNative()
-
-      const insertedTasks = (await this.#pool.query(insertQuery.sql, insertQuery.bindings)).rows;
-      const updatedPlans = (await this.#pool.query(setOtherPlansNotActive.sql, setOtherPlansNotActive.bindings)).rows;
-
-      // Commit transaction
-      //await trx.commit();
+        .toNative();
+  
+      await this.#pool.query(setOtherPlansNotActive.sql, setOtherPlansNotActive.bindings);
+  
       return insertedTasks;
     } catch (err) {
-      console.log(err)
+      console.log(err);
       throw err;
     }
   }
+  
 
   // Пользователь нажимает начать план
   async updatePlan(planId, updatedData) {

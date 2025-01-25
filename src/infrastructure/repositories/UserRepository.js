@@ -92,7 +92,8 @@ export class UserRepository {
   }
 
   async getUserById(userId) {
-    const getUserInfoQuery = this.#knex
+    try {
+      const getUserInfoQuery = this.#knex
       .queryBuilder()
       .select('username', 'email', 'userId')
       .from('Users')
@@ -105,14 +106,14 @@ export class UserRepository {
       .select(
         '*',
         this.#knex.raw(`
-        (
-          SELECT json_agg(tasks)
-          FROM "Tasks" tasks
-          WHERE tasks."planId" = "Plans"."planId"
-          AND tasks."date" = CURRENT_DATE
-          AND "Plans"."isActive" = true
-        ) AS "todayTasks"
-      `)
+          (
+            SELECT json_agg(tasks)
+            FROM "Tasks" tasks
+            WHERE tasks."planId" = "Plans"."planId"
+            AND tasks."date" = CURRENT_DATE
+            AND "Plans"."isActive" = true
+          ) as "todayTasks"
+        `)
       )
       .where('Plans.userId', '=', userId)
       .where('Plans.isActive', '=', true)
@@ -125,6 +126,7 @@ export class UserRepository {
         '*'
       )
       .where('userId', '=', userId)
+      .orderBy('likesCount', 'desc')
       .toSQL()
       .toNative();
 
@@ -132,14 +134,23 @@ export class UserRepository {
     const [userPlan] = (await this.#pool.query(userPlanQuery.sql, userPlanQuery.bindings)).rows;
     const userOriginalPlans = (await this.#pool.query(userOriginalPlanQuery.sql, userOriginalPlanQuery.bindings)).rows;
 
-    if (!userPlan.todayTasks) {
+    if (!userPlan) {
+      return null;
+    }
+
+    if (!userPlan?.todayTasks) {
       userPlan.todayTasks = [];
     }
+
+    console.log(userPlan)
 
     return {
       user,
       userPlan,
       userOriginalPlans,
+    }
+    } catch (err) {
+      console.log(err)
     }
   }
 }

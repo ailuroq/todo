@@ -57,6 +57,7 @@ CREATE TABLE "Tasks" (
     "carbs" DECIMAL(10, 2),
     "fats" DECIMAL(10, 2),
     "date" DATE,
+    "originalTaskId" INT REFERENCES "OriginalTasks"("taskId") ON DELETE SET NULL,
     "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -100,6 +101,10 @@ CREATE TABLE "OriginalTasks" (
     "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE "OriginalTasks"
+ADD COLUMN "mainImageLink" VARCHAR(2048);
+
 
 -- Таблица уведомлений
 CREATE TABLE "Notifications" (
@@ -222,16 +227,26 @@ CREATE TABLE "Friends" (
     UNIQUE("userId", "friendId")
 );
 
-CREATE TABLE images (
-    id SERIAL PRIMARY KEY,                -- Уникальный идентификатор изображения
-    image_data BYTEA NOT NULL,            -- Содержимое изображения в бинарном формате
-    plan_id INTEGER,                      -- ID плана, к которому относится изображение
-    task_id INTEGER,                      -- ID задачи, к которой относится изображение
-    uploader_id INTEGER,                  -- ID пользователя, который загрузил изображение
-    image_type VARCHAR(50),               -- Тип изображения (например, "обложка", "иллюстрация")
-    created_at TIMESTAMP DEFAULT NOW(),   -- Дата загрузки изображения
-    updated_at TIMESTAMP DEFAULT NOW(),   -- Дата последнего обновления
-    CONSTRAINT fk_plan FOREIGN KEY (plan_id) REFERENCES plans (id) ON DELETE CASCADE,
-    CONSTRAINT fk_task FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE,
-    CONSTRAINT fk_uploader FOREIGN KEY (uploader_id) REFERENCES users (id) ON DELETE CASCADE
+create table if not exists public."Images"
+(
+    id               serial
+        primary key,
+    "imageData"      bytea not null,
+    "originalPlanId" integer
+        references public."OriginalPlans"
+            on delete cascade,
+    "originalTaskId" integer
+        references public."OriginalTasks"
+            on delete cascade,
+    "planId"         integer
+        references public."Plans"
+            on delete cascade,
+    "taskId"         integer
+        references public."Tasks"
+            on delete cascade,
+    "userId"         integer
+        references public."Users",
+    "imageType"      varchar(50),
+    "createdAt"      timestamp default now(),
+    "updatedAt"      timestamp default now()
 );

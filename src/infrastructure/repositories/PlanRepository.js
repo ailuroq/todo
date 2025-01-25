@@ -71,7 +71,20 @@ export class PlanRepository {
             WHERE tasks."planId" = "Plans"."planId"
             AND "Plans"."isActive" = true
           ) AS tasks
-        `)
+        `),
+        this.#knex.raw(`
+          (
+            SELECT CASE
+              WHEN COUNT(*) FILTER (
+                WHERE tasks.status != 'done'
+                AND tasks.date = CURRENT_DATE
+              ) = 0 THEN true
+              ELSE false
+            END
+            FROM "Tasks" tasks
+            WHERE tasks."planId" = "Plans"."planId"
+          ) AS "isDayCompleted"
+          `)
         )
         .where('Plans.userId', '=', userId)
         .where('Plans.isActive', '=', true)
@@ -80,6 +93,7 @@ export class PlanRepository {
         .toNative();
 
       const [plan] = (await this.#pool.query(query.sql, query.bindings)).rows;
+
       return plan || null;
     } catch (err) {
       throw err;

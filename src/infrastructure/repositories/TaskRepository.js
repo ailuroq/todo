@@ -92,6 +92,21 @@ export class TaskRepository {
   // Обновление существующего плана по ID
   async updateTask(taskId, updatedData) {
     try {
+
+      if (updatedData.lastTaskGoingToBeDone === true) {
+        const updateLikesForThePlanQuery = this.#knex('OriginalPlans')
+        .where('planId', '=', updatedData.originalPlanId)
+        .increment('likesCount', 1)
+        .returning('*')
+        .toSQL()
+        .toNative();
+
+        await this.#pool.query(updateLikesForThePlanQuery.sql, updateLikesForThePlanQuery.bindings);
+      }
+
+      delete updatedData.lastTaskGoingToBeDone;
+      delete updatedData.originalPlanId;
+
       const query = this.#knex('Tasks')
         .update(updatedData)
         .where('taskId', '=', taskId)

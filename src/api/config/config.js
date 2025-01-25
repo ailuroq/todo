@@ -15,4 +15,10 @@ export default {
     password: process.env.DB_PASSWORD,
     name: process.env.DB_NAME,
   },
+  s3: {
+    endpoing: process.env.S3_ENDPOINT,
+    region: process.env.S3_REGION,
+    accessKeyId: process.env.S3_ACCESS_KEY_ID,
+    accessKey: process.env.S3_ACCESS_KEY
+  }
 };

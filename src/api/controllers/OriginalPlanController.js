@@ -2,7 +2,11 @@ import { pipeline as pipelineCallback } from 'stream';
 const pipeline = promisify(pipelineCallback);
 import fs from 'fs';
 import { promisify } from 'util';
+import path from 'path';
 import sharp from 'sharp';
+import { Upload } from "@aws-sdk/lib-storage";
+import { s3client } from '../config/s3Client.js';
+
 export class OriginalPlanController {
   constructor(planRepository) {
     this.planRepository = planRepository;
@@ -38,14 +42,28 @@ export class OriginalPlanController {
     }
   }
 
+  async uploadToS3(bucketName, key, fileStream) {
+    const upload = new Upload({
+      client: s3client,
+      params: {
+        Bucket: bucketName,
+        Key: key,
+        Body: fileStream,
+        ContentType: "image/jpeg",
+      },
+    });
+  
+    return await upload.done(); // Возвращает результат загрузки
+  }
+
   // Создание нового плана
   async createPlan(request, reply) {
     try {
       const parts = request.parts();
       const userId = request.user.id;
       const plan = {
-        title: '',
-        description: '',
+        title: "",
+        description: "",
         tags: [],
         tasks: [],
       };
@@ -53,61 +71,71 @@ export class OriginalPlanController {
       // Обрабатываем части запроса
       for await (const part of parts) {
         if (part.file) {
-          // Обработка файлов (изображений)
           const filename = part.filename;
-          const originalFilePath = `./uploads/original_${filename}`;
-          const compressedFilePath = `./uploads/${filename}`;
-          
-          // Сохраняем оригинал
+          const originalFilePath = path.join("./uploads", `original_${filename}`);
+          const compressedFilePath = path.join("./uploads", `compressed_${filename}`);
+  
+          // Сохраняем оригинал временно
           await pipeline(part.file, fs.createWriteStream(originalFilePath));
-      
+  
           // Сжимаем изображение
           await sharp(originalFilePath)
-            .resize({ width: 1024 }) // Изменяем размер до ширины 1024 пикселей (если нужно)
-            .jpeg({ quality: 80 })  // Сохраняем в формате JPEG с качеством 80%
+            .resize({ width: 1024 })
+            .jpeg({ quality: 80 })
             .toFile(compressedFilePath);
-      
-          // Удаляем оригинал, если больше не нужен
+  
+          // Читаем сжатый файл
+          const fileStream = fs.createReadStream(compressedFilePath);
+          const bucketName = 'yoyoyo';
+          const key = `uploads/${Date.now()}_${filename}`;
+  
+          // Загружаем на S3
+          const uploadResult = await this.uploadToS3(bucketName, key, fileStream);
+  
+          // Удаляем временные файлы
           fs.unlinkSync(originalFilePath);
-      
-          // Сохраняем путь к сжатому изображению в задачу
+          fs.unlinkSync(compressedFilePath);
+  
+          // Сохраняем URL изображения в задачу
           const match = part.fieldname.match(/tasks\[(\d+)]\[image\]/);
           if (match) {
             const taskIndex = parseInt(match[1], 10);
             plan.tasks[taskIndex] = plan.tasks[taskIndex] || {};
-            plan.tasks[taskIndex].image = compressedFilePath;
+            plan.tasks[taskIndex].images = plan.tasks[taskIndex].images || [];
+            plan.tasks[taskIndex].images.push(uploadResult.Location); // Добавляем ссылку на S3
           }
         } else {
           // Обработка текстовых данных
           const fieldname = part.fieldname;
           const value = part.value;
-      
-          if (fieldname === 'title') {
+  
+          if (fieldname === "title") {
             plan.title = value;
-          } else if (fieldname === 'description') {
+          } else if (fieldname === "description") {
             plan.description = value;
-          } else if (fieldname === 'tags') {
+          } else if (fieldname === "tags") {
             plan.tags = JSON.parse(value);
           } else {
             const match = fieldname.match(/tasks\[(\d+)]\[(.+)\]/);
             if (match) {
               const taskIndex = parseInt(match[1], 10);
               const key = match[2];
-      
+  
               plan.tasks[taskIndex] = plan.tasks[taskIndex] || {};
-              plan.tasks[taskIndex][key] = key.includes('is')
-                ? value === 'true'
+              plan.tasks[taskIndex][key] = key.includes("is")
+                ? value === "true"
                 : value;
             }
           }
         }
       }
-
-
-      await this.planRepository.createPlanFromUser(plan, userId);
-
-      return reply.code(201);
+  
+      // Сохраняем план в базе данных
+      const result = await this.planRepository.createPlanFromUser(plan, userId);
+  
+      return reply.send(result)
     } catch (err) {
+      console.error(err);
       throw err;
     }
   }
