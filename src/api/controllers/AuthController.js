@@ -3,7 +3,7 @@ export class AuthController {
     this.userRepository = userRepository;
   }
 
-  async register(request) {
+  async register(request, reply) {
     try {
       return this.userRepository.register(
         request.body.username,
@@ -11,15 +11,17 @@ export class AuthController {
         request.body.password
       );
     } catch (err) {
-      throw err;
+      reply.status(500).send({ error: 'Error saving to database' });
     }
   }
 
-  async login(request) {
+  async login(request, reply) {
     try {
-      return this.userRepository.login(request.body.email, request.body.password);
+      const result = await this.userRepository.login(request.body.email, request.body.password);
+
+      return result;
     } catch (err) {
-      throw err;
+      reply.status(401).send({ error: 'Not authentificated' });
     }
   }
 
