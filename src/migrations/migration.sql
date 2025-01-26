@@ -105,6 +105,14 @@ CREATE TABLE "OriginalTasks" (
 ALTER TABLE "OriginalTasks"
 ADD COLUMN "mainImageLink" VARCHAR(2048);
 
+ALTER TABLE "Tasks"
+ADD COLUMN "mainImageLink" VARCHAR(2048);
+
+ALTER TABLE "Plans"
+ADD COLUMN "mainImageLink" VARCHAR(2048);
+
+ALTER TABLE "OriginalPlans"
+ADD COLUMN "mainImageLink" VARCHAR(2048);
 
 -- Таблица уведомлений
 CREATE TABLE "Notifications" (

@@ -93,7 +93,7 @@ export class OriginalPlanRepository {
             description: item.description,
             dayNumber: item.dayNumber,
             isMandatory: item.isMandatory,
-            mainImageLink: item.images,
+            mainImageLink: item.images[0],
             userId,
           })))
           .into('OriginalTasks')

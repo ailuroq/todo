@@ -142,8 +142,6 @@ export class UserRepository {
       userPlan.todayTasks = [];
     }
 
-    console.log(userPlan)
-
     return {
       user,
       userPlan,
