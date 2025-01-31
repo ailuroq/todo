@@ -108,8 +108,18 @@ ADD COLUMN "mainImageLink" VARCHAR(2048);
 ALTER TABLE "Tasks"
 ADD COLUMN "mainImageLink" VARCHAR(2048);
 
+alter table "Tasks"
+add column "tag" VARCHAR(2048);
+
+alter table "OriginalTasks"
+add column "tag" VARCHAR(2048)
+
 ALTER TABLE "Plans"
 ADD COLUMN "mainImageLink" VARCHAR(2048);
+
+ALTER TABLE "Plans"
+ADD COLUMN lastActivityDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
 
 ALTER TABLE "OriginalPlans"
 ADD COLUMN "mainImageLink" VARCHAR(2048);

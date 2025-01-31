@@ -38,7 +38,7 @@ export class OriginalPlanRepository {
   }
 
   // Получение плана по ID
-  async getPlanById(planId) {
+  async getOriginalPlanById(planId, userId = false) {
     try {
       const query = this.#knex('OriginalPlans')
         .select(
@@ -59,9 +59,19 @@ export class OriginalPlanRepository {
 
       const [plan] = (await this.#pool.query(query.sql, query.bindings)).rows;
 
-      // const tasks = plan.tasks.map((task) => {
-      //   task.
-      // })
+      if (userId) {
+        const isThereActiveUserPlan = this.#knex('Plans')
+        .select('planId', 'isActive')
+        .where({ userId, isActive: true })
+        .first()
+        .toSQL()
+        .toNative();
+
+        const [isActivePlan] = (await this.#pool.query(isThereActiveUserPlan.sql, isThereActiveUserPlan.bindings)).rows;
+
+        plan.isActivePlanExists = isActivePlan?.isActive;
+      }
+
       return plan || null;
     } catch (err) {
       throw err;
@@ -93,7 +103,8 @@ export class OriginalPlanRepository {
             description: item.description,
             dayNumber: item.dayNumber,
             isMandatory: item.isMandatory,
-            mainImageLink: item.images[0],
+            mainImageLink: item.image,
+            tag: item.tag,
             userId,
           })))
           .into('OriginalTasks')

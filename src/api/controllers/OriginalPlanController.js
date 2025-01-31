@@ -9,7 +9,7 @@ import { s3client } from '../config/s3Client.js';
 
 export class OriginalPlanController {
   constructor(planRepository) {
-    this.planRepository = planRepository;
+    this.originalPlanRepository = planRepository;
   }
 
   // Получение списка планов с фильтрацией и сортировкой
@@ -21,7 +21,7 @@ export class OriginalPlanController {
         ? categories.split(',')
         : []
 
-      const plans = await this.planRepository.getPlans(filter, sort, searchQuery, parsedCategories);
+      const plans = await this.originalPlanRepository.getPlans(filter, sort, searchQuery, parsedCategories);
       return plans;
     } catch (err) {
       throw err;
@@ -32,7 +32,8 @@ export class OriginalPlanController {
   async getPlanById(request) {
     try {
       const { planId } = request.params;
-      const plan = await this.planRepository.getPlanById(planId);
+      const userId = request.user.id;
+      const plan = await this.originalPlanRepository.getOriginalPlanById(planId, userId);
       if (!plan) {
         throw new Error('Plan not found');
       }
@@ -101,8 +102,7 @@ export class OriginalPlanController {
           if (match) {
             const taskIndex = parseInt(match[1], 10);
             plan.tasks[taskIndex] = plan.tasks[taskIndex] || {};
-            plan.tasks[taskIndex].images = plan.tasks[taskIndex].images || [];
-            plan.tasks[taskIndex].images.push(uploadResult.Location); // Добавляем ссылку на S3
+            plan.tasks[taskIndex].image = uploadResult.Location; // Добавляем ссылку на S3
           }
         } else {
           // Обработка текстовых данных
@@ -131,7 +131,8 @@ export class OriginalPlanController {
       }
   
       // Сохраняем план в базе данных
-      const result = await this.planRepository.createPlanFromUser(plan, userId);
+      console.log(plan)
+      const result = await this.originalPlanRepository.createPlanFromUser(plan, userId);
   
       return reply.send(result)
     } catch (err) {
@@ -145,7 +146,7 @@ export class OriginalPlanController {
     try {
       const { planId } = request.params;
       const userId = 1;
-      const existingPlan = await this.planRepository.getPlanById(planId);
+      const existingPlan = await this.originalPlanRepository.getOriginalPlanById(planId);
 
       if (!existingPlan) {
         throw new Error('Plan not found');
@@ -155,7 +156,7 @@ export class OriginalPlanController {
         throw new Error('You can only edit your own plans');
       }
 
-      const updatedPlan = await this.planRepository.updatePlan(planId, request.body);
+      const updatedPlan = await this.originalPlanRepository.updatePlan(planId, request.body);
       return updatedPlan;
     } catch (err) {
       throw err;
@@ -166,13 +167,13 @@ export class OriginalPlanController {
     try {
       const { planId } = request.params;
       const userId = request.user.id;
-      const existingPlan = await this.planRepository.getPlanById(planId);
+      const existingPlan = await this.originalPlanRepository.getOriginalPlanById(planId);
 
       if (!existingPlan) {
         throw new Error('Plan not found');
       }
 
-      const updatedPlan = await this.planRepository.startPlan(userId, planId);
+      const updatedPlan = await this.originalPlanRepository.startPlan(userId, planId);
       return updatedPlan;
     } catch (err) {
       throw err;
@@ -184,7 +185,7 @@ export class OriginalPlanController {
     try {
       const { planId } = request.params;
       const userId = 1;
-      const existingPlan = await this.planRepository.getPlanById(planId);
+      const existingPlan = await this.originalPlanRepository.getOriginalPlanById(planId);
 
       if (!existingPlan) {
         throw new Error('Plan not found');
@@ -194,7 +195,7 @@ export class OriginalPlanController {
         throw new Error('You can only delete your own plans');
       }
 
-      await this.planRepository.deletePlan(planId);
+      await this.originalPlanRepository.deletePlan(planId);
       return reply.code(204).send();
     } catch (err) {
       throw err;
@@ -205,7 +206,7 @@ export class OriginalPlanController {
   async getMyPlans(request) {
     try {
       const userId = request.user.id;
-      const plans = await this.planRepository.getPlansByUserId(userId);
+      const plans = await this.originalPlanRepository.getPlansByUserId(userId);
       return plans;
     } catch (err) {
       throw err;

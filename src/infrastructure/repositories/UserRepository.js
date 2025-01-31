@@ -151,4 +151,20 @@ export class UserRepository {
       console.log(err)
     }
   }
+
+  async deleteUser(userId) {
+    try {
+      const deleteUserQuery = this.#knex
+        .queryBuilder()
+        .delete()
+        .from('Users')
+        .where('userId', '=', userId)
+        .toSQL()
+        .toNative();
+
+      await this.#pool.query(deleteUserQuery.sql, deleteUserQuery.bindings);
+    } catch (err) {
+      console.log(err)
+    }
+  }
 }
