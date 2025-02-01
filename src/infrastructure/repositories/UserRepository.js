@@ -152,6 +152,27 @@ export class UserRepository {
     }
   }
 
+  async getUserBaseInfoById(userId) {
+    try {
+      const getUserInfoQuery = this.#knex
+      .queryBuilder()
+      .select('username', 'email', 'userId', 'avatar')
+      .from('Users')
+      .where('userId', '=', userId)
+      .first()
+      .toSQL()
+      .toNative();
+
+    const [user] = (await this.#pool.query(getUserInfoQuery.sql, getUserInfoQuery.bindings)).rows;
+
+    return {
+      user
+    }
+    } catch (err) {
+      console.log(err)
+    }
+  }
+
   async deleteUser(userId) {
     try {
       const deleteUserQuery = this.#knex
@@ -167,4 +188,64 @@ export class UserRepository {
       console.log(err)
     }
   }
+
+  async updateUser(userId, updatedData) {
+    try {
+      const updateUserQuery = this.#knex
+        .queryBuilder()
+        .update(updatedData)
+        .from('Users')
+        .where('userId', '=', userId)
+        .toSQL()
+        .toNative();
+  
+      const result = await this.#pool.query(updateUserQuery.sql, updateUserQuery.bindings);
+      return result;
+    } catch (err) {
+      console.error('Ошибка при обновлении пользователя:', err);
+      throw err;
+    }
+  }
+
+  async saveFeedback(userId, feedbackText) {
+    try {
+      const insertFeedbackQuery = this.#knex
+        .queryBuilder()
+        .insert({
+          userId,
+          feedbackText
+          // Поле created_at можно не указывать, если в БД стоит DEFAULT NOW()
+        })
+        .into('Feedback')
+        .toSQL()
+        .toNative();
+  
+      const result = await this.#pool.query(insertFeedbackQuery.sql, insertFeedbackQuery.bindings);
+      return result;
+    } catch (err) {
+      console.error('Ошибка при сохранении обратной связи:', err);
+      throw err;
+    }
+  }
+  
+  async checkUsernameExists(userId, newUsername) {
+    try {
+      const existingUserQuery = this.#knex('Users')
+        .select('userId')
+        .where('username', newUsername)
+        .andWhere('userId', '!=', userId)
+        .first()
+        .toSQL()
+        .toNative();
+
+      const existingUser = await this.#pool.query(existingUserQuery.sql, existingUserQuery.bindings);
+  
+      console.log('existingUser', existingUser)
+      return Boolean(existingUser.rows.length);
+    } catch (err) {
+      console.error('Ошибка при проверке существования никнейма:', err);
+      throw err;
+    }
+  }
+  
 }

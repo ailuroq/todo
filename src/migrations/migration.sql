@@ -268,3 +268,10 @@ create table if not exists public."Images"
     "createdAt"      timestamp default now(),
     "updatedAt"      timestamp default now()
 );
+
+CREATE TABLE "Feedback" (
+  "id" SERIAL PRIMARY KEY,
+  "userId" INTEGER NOT NULL REFERENCES "Users"("userId"),
+  "feedbackText" TEXT NOT NULL,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

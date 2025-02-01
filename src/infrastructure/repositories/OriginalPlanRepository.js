@@ -1,5 +1,4 @@
 import Knex from 'knex';
-import fs from 'fs';
 
 export class OriginalPlanRepository {
   #knex = Knex({ client: 'pg' });
@@ -13,24 +12,29 @@ export class OriginalPlanRepository {
   async getPlans(filter = {}, sort = {}, searchQuery, categories) {
     try {
       const sqlQuery = this.#knex('OriginalPlans')
-      .select('*')
-      .where(function () {
-        if (searchQuery) {
-          this.whereRaw('LOWER(title) ILIKE ?', [`%${searchQuery.toLowerCase()}%`])
-          .orWhereRaw('LOWER(description) ILIKE ?', [`%${searchQuery.toLowerCase()}%`]);
-        }
+        .select(
+          'OriginalPlans.*',
+          'Users.*',
+          this.#knex.raw('(SELECT MAX("dayNumber") FROM "OriginalTasks" WHERE "OriginalTasks"."planId" = "OriginalPlans"."planId") AS "maxDayNumber"')
+        )
+        .where(function () {
+          if (searchQuery) {
+            this.whereRaw('LOWER(title) ILIKE ?', [`%${searchQuery.toLowerCase()}%`])
+            .orWhereRaw('LOWER(description) ILIKE ?', [`%${searchQuery.toLowerCase()}%`]);
+          }
 
-        if (categories && categories.length > 0) {
-          this.whereIn('category', categories);
-        }
-      })
-      .innerJoin('Users', 'OriginalPlans.userId', 'Users.userId')
-      .orderBy('OriginalPlans.likesCount', 'desc')
-      .toSQL()
-      .toNative();
+          if (categories && categories.length > 0) {
+            this.whereIn('category', categories);
+          }
+        })
+        .innerJoin('Users', 'OriginalPlans.userId', 'Users.userId')
+        .orderBy('OriginalPlans.likesCount', 'desc')
+        .toSQL()
+        .toNative();
 
       const plans = (await this.#pool.query(sqlQuery.sql, sqlQuery.bindings)).rows;
 
+      console.log(plans)
       return plans;
     } catch (err) {
       throw err;
