@@ -1,20 +1,20 @@
 -- Таблица пользователей
-CREATE TABLE "Users" (
+CREATE TABLE IF NOT EXISTS "Users" (
     "userId" SERIAL PRIMARY KEY,
     "username" VARCHAR(50) NOT NULL,
     "email" VARCHAR(100) UNIQUE NOT NULL,
     "password" VARCHAR(255) NOT NULL,
     "avatar" TEXT,
     "role" VARCHAR(20) DEFAULT 'user',
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    "points" INT DEFAULT 0,
+    "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+    "updatedAt" TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE "Users" ADD COLUMN "points" INT DEFAULT 0;
 
--- Таблица планов
-CREATE TABLE "Plans" (
+-- Таблица оригинальных планов (создаём до зависимых таблиц)
+CREATE TABLE IF NOT EXISTS "OriginalPlans" (
     "planId" SERIAL PRIMARY KEY,
-    "userId" INT REFERENCES "Users"("userId"),
+    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
     "title" VARCHAR(255) NOT NULL,
     "description" TEXT,
     "details" TEXT,
@@ -22,65 +22,39 @@ CREATE TABLE "Plans" (
     "isPublic" BOOLEAN DEFAULT TRUE,
     "likesCount" INT DEFAULT 0,
     "version" INT DEFAULT 1,
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    "isActive" BOOLEAN DEFAULT FALSE,
-    "originalPlanId" INT REFERENCES "OriginalPlans"("planId")
+    "mainImageLink" VARCHAR(2048),
+    "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+    "updatedAt" TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Таблица тегов для задач
-CREATE TABLE "Tags" (
+-- Таблица планов
+CREATE TABLE IF NOT EXISTS "Plans" (
+    "planId" SERIAL PRIMARY KEY,
+    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "title" VARCHAR(255) NOT NULL,
+    "description" TEXT,
+    "details" TEXT,
+    "category" VARCHAR(50),
+    "isPublic" BOOLEAN DEFAULT TRUE,
+    "likesCount" INT DEFAULT 0,
+    "version" INT DEFAULT 1,
+    "isActive" BOOLEAN DEFAULT FALSE,
+    "originalPlanId" INT REFERENCES "OriginalPlans"("planId") ON DELETE SET NULL,
+    "mainImageLink" VARCHAR(2048),
+    "lastActivityDate" TIMESTAMPTZ DEFAULT NOW(),
+    "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+    "updatedAt" TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Таблица тегов
+CREATE TABLE IF NOT EXISTS "Tags" (
     "tagId" SERIAL PRIMARY KEY,
     "name" VARCHAR(50) NOT NULL,
     "description" TEXT
 );
 
--- Таблица задач
-CREATE TABLE "Tasks" (
-    "taskId" SERIAL PRIMARY KEY,
-    "planId" INT REFERENCES "Plans"("planId") ON DELETE CASCADE,
-    "userId" INT REFERENCES "Users"("userId") ON DELETE SET NULL,
-    "title" VARCHAR(255) NOT NULL,
-    "description" TEXT,
-    "taskOrder" INT,
-    "durationMinutes" INT,
-    "isRepeating" BOOLEAN DEFAULT FALSE,
-    "isMandatory" BOOLEAN DEFAULT FALSE,
-    "isMeal" BOOLEAN DEFAULT FALSE,
-    "repeatType" VARCHAR(50),
-    "repeatDays" VARCHAR(50),
-    "tagId" INT REFERENCES "Tags"("tagId"),
-    "startTime" TIME,
-    "endTime" TIME,
-    "status" VARCHAR(50) DEFAULT 'pending',
-    "calories" DECIMAL(10, 2),
-    "protein" DECIMAL(10, 2),
-    "carbs" DECIMAL(10, 2),
-    "fats" DECIMAL(10, 2),
-    "date" DATE,
-    "originalTaskId" INT REFERENCES "OriginalTasks"("taskId") ON DELETE SET NULL,
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-ALTER TABLE "Tasks" ADD COLUMN "penaltyApplied" BOOLEAN DEFAULT FALSE;
-
-
-CREATE TABLE "OriginalPlans" (
-    "planId" SERIAL PRIMARY KEY,
-    "userId" INT REFERENCES "Users"("userId"),
-    "title" VARCHAR(255) NOT NULL,
-    "description" TEXT,
-    "details" TEXT,
-    "category" VARCHAR(50),
-    "isPublic" BOOLEAN DEFAULT TRUE,
-    "likesCount" INT DEFAULT 0,
-    "version" INT DEFAULT 1,
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE "OriginalTasks" (
+-- Таблица оригинальных задач
+CREATE TABLE IF NOT EXISTS "OriginalTasks" (
     "taskId" SERIAL PRIMARY KEY,
     "planId" INT REFERENCES "OriginalPlans"("planId") ON DELETE CASCADE,
     "userId" INT REFERENCES "Users"("userId") ON DELETE SET NULL,
@@ -94,7 +68,7 @@ CREATE TABLE "OriginalTasks" (
     "isMeal" BOOLEAN DEFAULT FALSE,
     "repeatType" VARCHAR(50),
     "repeatDays" VARCHAR(50),
-    "tagId" INT REFERENCES "Tags"("tagId"),
+    "tagId" INT REFERENCES "Tags"("tagId") ON DELETE SET NULL,
     "startTime" TIME,
     "endTime" TIME,
     "status" VARCHAR(50) DEFAULT 'pending',
@@ -102,180 +76,72 @@ CREATE TABLE "OriginalTasks" (
     "protein" DECIMAL(10, 2),
     "carbs" DECIMAL(10, 2),
     "fats" DECIMAL(10, 2),
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    "mainImageLink" VARCHAR(2048),
+    "tag" VARCHAR(2048),
+    "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+    "updatedAt" TIMESTAMPTZ DEFAULT NOW()
 );
 
-ALTER TABLE "OriginalTasks"
-ADD COLUMN "mainImageLink" VARCHAR(2048);
+-- Таблица задач
+CREATE TABLE IF NOT EXISTS "Tasks" (
+    "taskId" SERIAL PRIMARY KEY,
+    "planId" INT REFERENCES "Plans"("planId") ON DELETE CASCADE,
+    "userId" INT REFERENCES "Users"("userId") ON DELETE SET NULL,
+    "title" VARCHAR(255) NOT NULL,
+    "description" TEXT,
+    "taskOrder" INT,
+    "durationMinutes" INT,
+    "isRepeating" BOOLEAN DEFAULT FALSE,
+    "isMandatory" BOOLEAN DEFAULT FALSE,
+    "isMeal" BOOLEAN DEFAULT FALSE,
+    "repeatType" VARCHAR(50),
+    "repeatDays" VARCHAR(50),
+    "tagId" INT REFERENCES "Tags"("tagId") ON DELETE SET NULL,
+    "startTime" TIME,
+    "endTime" TIME,
+    "status" VARCHAR(50) DEFAULT 'pending',
+    "calories" DECIMAL(10, 2),
+    "protein" DECIMAL(10, 2),
+    "carbs" DECIMAL(10, 2),
+    "fats" DECIMAL(10, 2),
+    "date" DATE,
+    "originalTaskId" INT REFERENCES "OriginalTasks"("taskId") ON DELETE SET NULL,
+    "penaltyApplied" BOOLEAN DEFAULT FALSE,
+    "mainImageLink" VARCHAR(2048),
+    "tag" VARCHAR(2048),
+    "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+    "updatedAt" TIMESTAMPTZ DEFAULT NOW()
+);
 
-ALTER TABLE "Tasks"
-ADD COLUMN "mainImageLink" VARCHAR(2048);
+-- Таблица изображений
+CREATE TABLE IF NOT EXISTS "Images" (
+    "id" SERIAL PRIMARY KEY,
+    "imageData" BYTEA NOT NULL,
+    "originalPlanId" INT REFERENCES "OriginalPlans"("planId") ON DELETE CASCADE,
+    "originalTaskId" INT REFERENCES "OriginalTasks"("taskId") ON DELETE CASCADE,
+    "planId" INT REFERENCES "Plans"("planId") ON DELETE CASCADE,
+    "taskId" INT REFERENCES "Tasks"("taskId") ON DELETE CASCADE,
+    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "imageType" VARCHAR(50),
+    "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+    "updatedAt" TIMESTAMPTZ DEFAULT NOW()
+);
 
-alter table "Tasks"
-add column "tag" VARCHAR(2048);
-
-alter table "OriginalTasks"
-add column "tag" VARCHAR(2048)
-
-ALTER TABLE "Plans"
-ADD COLUMN "mainImageLink" VARCHAR(2048);
-
-ALTER TABLE "Plans"
-ADD COLUMN lastActivityDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-
-
-ALTER TABLE "OriginalPlans"
-ADD COLUMN "mainImageLink" VARCHAR(2048);
-
--- Таблица уведомлений
-CREATE TABLE "Notifications" (
+-- Остальные таблицы (уведомления, достижения, прогресс и т.д.)
+CREATE TABLE IF NOT EXISTS "Notifications" (
     "notificationId" SERIAL PRIMARY KEY,
     "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
-    "planId" INT REFERENCES "Plans"("planId"),
-    "taskId" INT REFERENCES "Tasks"("taskId"),
-    "eventTime" TIMESTAMP NOT NULL,
+    "planId" INT REFERENCES "Plans"("planId") ON DELETE SET NULL,
+    "taskId" INT REFERENCES "Tasks"("taskId") ON DELETE SET NULL,
+    "eventTime" TIMESTAMPTZ NOT NULL,
     "type" VARCHAR(50) NOT NULL,
     "isRead" BOOLEAN DEFAULT FALSE,
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Таблица достижений (общие достижения, например, 10 дней подряд)
-CREATE TABLE "Achievements" (
-    "achievementId" SERIAL PRIMARY KEY,
-    "name" VARCHAR(255) NOT NULL,
-    "description" TEXT NOT NULL,
-    "conditionType" VARCHAR(50),
-    "requiredValue" INT NOT NULL,
-    "icon" TEXT,
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Таблица достижений пользователей
-CREATE TABLE "UserAchievements" (
-    "userAchievementId" SERIAL PRIMARY KEY,
-    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
-    "achievementId" INT REFERENCES "Achievements"("achievementId") ON DELETE CASCADE,
-    "achievedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Таблица лайков за выполнение плана
-CREATE TABLE "Likes" (
-    "likeId" SERIAL PRIMARY KEY,
-    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
-    "planId" INT REFERENCES "Plans"("planId") ON DELETE CASCADE,
-    "likeType" VARCHAR(20) DEFAULT 'plan',
-    "likeDate" DATE NOT NULL,
-    UNIQUE("userId", "planId", "likeDate"),
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Таблица замороженных лайков для планов
-CREATE TABLE "FrozenLikes" (
-    "frozenLikeId" SERIAL PRIMARY KEY,
-    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
-    "planId" INT REFERENCES "Plans"("planId") ON DELETE CASCADE,
-    "freezeStartDate" DATE NOT NULL,
-    "freezeEndDate" DATE,
-    "isActive" BOOLEAN DEFAULT TRUE,
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Таблица прогресса по выполнению обязательных задач плана
-CREATE TABLE "PlanProgress" (
-    "progressId" SERIAL PRIMARY KEY,
-    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
-    "planId" INT REFERENCES "Plans"("planId") ON DELETE CASCADE,
-    "progressDate" DATE NOT NULL,
-    "completedTasksCount" INT DEFAULT 0,
-    "mandatoryTasksCount" INT DEFAULT 0,
-    "allTasksCompleted" BOOLEAN DEFAULT FALSE,
-    "planStatus" VARCHAR(20) DEFAULT 'in-progress',
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE("userId", "planId", "progressDate")
-);
-
--- Таблица выполнения задач пользователями
-CREATE TABLE "TaskCompletion" (
-    "completionId" SERIAL PRIMARY KEY,
-    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
-    "taskId" INT REFERENCES "Tasks"("taskId") ON DELETE CASCADE,
-    "completedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    "status" VARCHAR(20) DEFAULT 'completed'
-);
-
--- Таблица подписок пользователей на планы
-CREATE TABLE "UserSubscriptions" (
-    "subscriptionId" SERIAL PRIMARY KEY,
-    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
-    "planId" INT REFERENCES "Plans"("planId"),
-    "subscriptionType" VARCHAR(50),
-    "startDate" DATE NOT NULL,
-    "endDate" DATE,
-    "isActive" BOOLEAN DEFAULT TRUE,
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Таблица активности пользователей
-CREATE TABLE "ActivityTracker" (
-    "activityId" SERIAL PRIMARY KEY,
-    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
-    "planId" INT REFERENCES "Plans"("planId"),
-    "activityDate" DATE NOT NULL,
-    "description" TEXT,
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Таблица вызовов/челленджей между пользователями
-CREATE TABLE "Challenges" (
-    "challengeId" SERIAL PRIMARY KEY,
-    "creatorUserId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
-    "targetUserId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
-    "planId" INT REFERENCES "Plans"("planId"),
-    "description" TEXT,
-    "startDate" DATE NOT NULL,
-    "endDate" DATE,
-    "status" VARCHAR(20) DEFAULT 'pending',
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Таблица друзей/подписчиков пользователей
-CREATE TABLE "Friends" (
-    "friendshipId" SERIAL PRIMARY KEY,
-    "userId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
-    "friendId" INT REFERENCES "Users"("userId") ON DELETE CASCADE,
-    "status" VARCHAR(20) DEFAULT 'pending',
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE("userId", "friendId")
-);
-
-create table if not exists public."Images"
-(
-    id               serial
-        primary key,
-    "imageData"      bytea not null,
-    "originalPlanId" integer
-        references public."OriginalPlans"
-            on delete cascade,
-    "originalTaskId" integer
-        references public."OriginalTasks"
-            on delete cascade,
-    "planId"         integer
-        references public."Plans"
-            on delete cascade,
-    "taskId"         integer
-        references public."Tasks"
-            on delete cascade,
-    "userId"         integer
-        references public."Users",
-    "imageType"      varchar(50),
-    "createdAt"      timestamp default now(),
-    "updatedAt"      timestamp default now()
-);
-
-CREATE TABLE "Feedback" (
-  "id" SERIAL PRIMARY KEY,
-  "userId" INTEGER NOT NULL REFERENCES "Users"("userId"),
-  "feedbackText" TEXT NOT NULL,
-  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS "Feedback" (
+    "id" SERIAL PRIMARY KEY,
+    "userId" INT NOT NULL REFERENCES "Users"("userId") ON DELETE CASCADE,
+    "feedbackText" TEXT NOT NULL,
+    "createdAt" TIMESTAMPTZ DEFAULT NOW()
 );
