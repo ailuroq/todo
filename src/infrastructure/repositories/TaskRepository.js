@@ -54,33 +54,50 @@ export class TaskRepository {
   // Создание нового плана
   async createTask(taskData) {
     try {
-      const query = this.#knex('Tasks').insert(taskData).returning('*').toSQL().toNative();
-
-      if (taskData.isMeal) {
-
-      // const response = await openai.chat.completions.create({
-      //   model: 'gpt-4o-mini',
-      //   messages: [
-      //     {
-      //       role: 'system',
-      //       content: `
-      //         Ты нутриционист. Твоя задача — анализировать описания блюд и возвращать информацию о БЖУ (белках, жирах, углеводах) и калориях в формате JSON. Если информация неточная, используй средние значения. Всегда рассчитывай для 100 грамм блюда.
-      //         Формат ответа:
-      //         {
-      //           "calories": число (ккал),
-      //           "proteins": число (грамм),
-      //           "fats": число (грамм),
-      //           "carbohydrates": число (грамм),
-      //         }
-      //       `,
-      //     },
-      //     { role: 'user', content: `Проанализируй блюдо: жареная картошка` },
-      //   ],
-      // });
-  
-      // const structuredData = JSON.parse(response.choices[0].message.content);
-      // console.log(structuredData)
+      if (taskData.startTime) {
+        // Разбиваем строку по символу "T" и удаляем "Z"
+        taskData.startTime = taskData.startTime.split('T')[1].replace('Z', '');
       }
+      if (taskData.endTime) {
+        taskData.endTime = taskData.endTime.split('T')[1].replace('Z', '');
+      }
+  
+      if (taskData.isMeal) {
+        const response = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `
+                Ты нутриционист. Твоя задача — анализировать описания блюд и возвращать информацию о БЖУ (белках, жирах, углеводах) и калориях в формате JSON. Если информация неточная, используй средние значения. Всегда рассчитывай для 100 грамм блюда.
+                Формат ответа, только следующая информация и исключительно в формате JSON и всё:
+                {
+                  "calories": число (ккал),
+                  "proteins": число (грамм),
+                  "fats": число (грамм),
+                  "carbohydrates": число (грамм),
+                }
+              `,
+            },
+            { role: 'user', content: taskData.description },
+          ],
+        });
+
+        const structuredData = JSON.parse(response.choices[0].message.content);
+        if (structuredData) {
+          taskData.protein = structuredData.proteins
+          taskData.fats = structuredData.fats
+          taskData.carbs = structuredData.carbohydrates
+          taskData.calories = structuredData.calories
+        }
+      }
+
+
+      const query = this.#knex('Tasks')
+        .insert(taskData)
+        .returning('*')
+        .toSQL()
+        .toNative();
 
       const newTask = (await this.#pool.query(query.sql, query.bindings)).rows;
       return newTask[0];
@@ -92,38 +109,88 @@ export class TaskRepository {
   // Обновление существующего плана по ID
   async updateTask(taskId, updatedData) {
     try {
-      if (updatedData?.lastTaskGoingToBeDone === true) {
-        const updateLikesForThePlanQuery = this.#knex('OriginalPlans')
-          .where('planId', '=', updatedData.originalPlanId)
-          .increment('likesCount', 1)
-          .returning('*')
-          .toSQL()
-          .toNative();
+        if (updatedData?.lastTaskGoingToBeDone === true) {
+            const updateLikesForThePlanQuery = this.#knex('OriginalPlans')
+                .where('planId', '=', updatedData.originalPlanId)
+                .increment('likesCount', 1)
+                .returning('*')
+                .toSQL()
+                .toNative();
 
-        await this.#pool.query(updateLikesForThePlanQuery.sql, updateLikesForThePlanQuery.bindings);
-      }
+            await this.#pool.query(updateLikesForThePlanQuery.sql, updateLikesForThePlanQuery.bindings);
+        }
 
-      let lastActivityDate = null;
+        let lastActivityDate = null;
+        let points = 0;
+        let isTaskCompleted = false;
+        let isTaskReverted = false;
 
-      if (updatedData?.status === 'done' && updatedData?.planId) {
-        lastActivityDate = this.#knex.fn.now();
-      }
+        // Получаем текущий статус задачи перед обновлением
+        const taskQuery = this.#knex('Tasks')
+            .select('status', 'isMandatory', 'isRepeating', 'userId')
+            .where('taskId', '=', taskId)
+            .toSQL()
+            .toNative();
 
-      console.log(updatedData)
+        const { rows } = await this.#pool.query(taskQuery.sql, taskQuery.bindings);
+        if (rows.length === 0) return;
 
-      const query = this.#knex('Tasks')
-        .update({status: updatedData.status, lastActivityDate})
-        .where('taskId', '=', taskId)
-        .returning('*')
-        .toSQL()
-        .toNative();
+        const task = rows[0];
 
-      const updatedTask = (await this.#pool.query(query.sql, query.bindings)).rows;
-      return updatedTask[0];
+        // ✅ Если пользователь выполняет задачу впервые
+        if (updatedData?.status === 'done' && task.status !== 'done') {
+            isTaskCompleted = true;
+            lastActivityDate = this.#knex.fn.now();
+            points = 10; // Базовые очки
+
+            if (task.isMandatory) points += 10; // +10 за важную
+            if (task.isRepeating) points += 5;  // +5 за повторяющуюся
+        }
+
+        // ❌ Если пользователь отменяет выполнение (меняет статус на "pending")
+        if (updatedData?.status === 'pending' && task.status === 'done') {
+            isTaskReverted = true;
+            points = -(10 + (task.isMandatory ? 10 : 0) + (task.isRepeating ? 5 : 0)); // Минусуем начисленные очки
+        }
+
+        // Обновляем статус задачи
+        const query = this.#knex('Tasks')
+            .update({ status: updatedData.status, lastActivityDate })
+            .where('taskId', '=', taskId)
+            .returning('*')
+            .toSQL()
+            .toNative();
+
+        const updatedTask = (await this.#pool.query(query.sql, query.bindings)).rows;
+
+        // ✅ Если задача выполнена – начисляем очки
+        if (isTaskCompleted) {
+            const pointsQuery = this.#knex('Users')
+                .where('userId', '=', task.userId)
+                .increment('points', points)
+                .toSQL()
+                .toNative();
+
+            await this.#pool.query(pointsQuery.sql, pointsQuery.bindings);
+        }
+
+        // ❌ Если задача была отменена – забираем очки
+        if (isTaskReverted) {
+            const pointsQuery = this.#knex('Users')
+                .where('userId', '=', task.userId)
+                .decrement('points', Math.abs(points)) // Отнимаем очки
+                .toSQL()
+                .toNative();
+
+            await this.#pool.query(pointsQuery.sql, pointsQuery.bindings);
+        }
+
+        return updatedTask[0];
     } catch (err) {
-      throw err;
+        throw err;
     }
-  }
+}
+
 
   // Удаление плана по ID
   async deleteTask(taskId) {

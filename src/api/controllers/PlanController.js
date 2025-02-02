@@ -35,7 +35,7 @@ export class PlanController {
       const plan = await this.planRepository.getCurrentUserPlan(id);
 
       if (!plan) {
-        throw new Error('Plan not found');
+        return [];
       }
 
       return plan;

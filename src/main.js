@@ -14,6 +14,7 @@ import { OriginalTaskRepository } from './infrastructure/repositories/OriginalTa
 import { OriginalPlanController } from './api/controllers/OriginalPlanController.js';
 import { OriginalTaskController } from './api/controllers/OriginalTaskController.js';
 import { UserController } from './api/controllers/UserController.js';
+import { startCronJobs } from './cronJobs.js';
 
 const PROCESS_STOP_EVENTS = ['unhandledRejection', 'SIGINT', 'SIGTERM'];
 
@@ -43,6 +44,7 @@ async function main() {
     new UserController(userRepository),
   ]);
 
+  startCronJobs(planRepository, userRepository);
   await server.start();
   console.log('Application started on port:', config.server.port);
 

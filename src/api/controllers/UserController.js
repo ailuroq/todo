@@ -110,8 +110,6 @@ export class UserController {
         }
       }
 
-      console.log(userId, updatedData)
-  
       // Обновляем данные пользователя в базе данных
       const result = await this.userRepository.updateUser(userId, updatedData);
   

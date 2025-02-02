@@ -65,18 +65,19 @@ export class OriginalPlanController {
       const plan = {
         title: "",
         description: "",
-        tags: [],
+        image: '',    // сюда будем сохранять URL изображения плана
+        tag: '',
         tasks: [],
       };
   
-      // Обрабатываем части запроса
+      // Обрабатываем все части запроса
       for await (const part of parts) {
         if (part.file) {
           const filename = part.filename;
           const originalFilePath = path.join("./uploads", `original_${filename}`);
           const compressedFilePath = path.join("./uploads", `compressed_${filename}`);
   
-          // Сохраняем оригинал временно
+          // Сохраняем оригинальный файл временно
           await pipeline(part.file, fs.createWriteStream(originalFilePath));
   
           // Сжимаем изображение
@@ -97,12 +98,16 @@ export class OriginalPlanController {
           fs.unlinkSync(originalFilePath);
           fs.unlinkSync(compressedFilePath);
   
-          // Сохраняем URL изображения в задачу
-          const match = part.fieldname.match(/tasks\[(\d+)]\[image\]/);
-          if (match) {
-            const taskIndex = parseInt(match[1], 10);
+          // Определяем, к какому полю относится изображение
+          const taskImageMatch = part.fieldname.match(/tasks\[(\d+)]\[image\]/);
+          if (taskImageMatch) {
+            // Если поле соответствует картинке задачи
+            const taskIndex = parseInt(taskImageMatch[1], 10);
             plan.tasks[taskIndex] = plan.tasks[taskIndex] || {};
-            plan.tasks[taskIndex].image = uploadResult.Location; // Добавляем ссылку на S3
+            plan.tasks[taskIndex].image = uploadResult.Location;
+          } else if (part.fieldname === "image") {
+            // Если поле называется просто "image" – это картинка плана
+            plan.image = uploadResult.Location;
           }
         } else {
           // Обработка текстовых данных
@@ -113,14 +118,14 @@ export class OriginalPlanController {
             plan.title = value;
           } else if (fieldname === "description") {
             plan.description = value;
-          } else if (fieldname === "tags") {
-            plan.tags = JSON.parse(value);
+          } else if (fieldname === "tag") {
+            plan.tag = value;
           } else {
+            // Обработка полей для задач
             const match = fieldname.match(/tasks\[(\d+)]\[(.+)\]/);
             if (match) {
               const taskIndex = parseInt(match[1], 10);
               const key = match[2];
-  
               plan.tasks[taskIndex] = plan.tasks[taskIndex] || {};
               plan.tasks[taskIndex][key] = key.includes("is")
                 ? value === "true"
@@ -131,15 +136,14 @@ export class OriginalPlanController {
       }
   
       // Сохраняем план в базе данных
-      console.log(plan)
       const result = await this.originalPlanRepository.createPlanFromUser(plan, userId);
-  
-      return reply.send(result)
+      return reply.send(result);
     } catch (err) {
       console.error(err);
       throw err;
     }
   }
+  
 
   // Обновление существующего плана
   async updatePlan(request) {

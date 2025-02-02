@@ -34,7 +34,6 @@ export class OriginalPlanRepository {
 
       const plans = (await this.#pool.query(sqlQuery.sql, sqlQuery.bindings)).rows;
 
-      console.log(plans)
       return plans;
     } catch (err) {
       throw err;
@@ -89,6 +88,7 @@ export class OriginalPlanRepository {
         .insert({
           userId,
           title: planData.title,
+          mainImageLink: planData.image,
           description: planData.description,
         })
         .into('OriginalPlans')

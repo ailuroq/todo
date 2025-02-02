@@ -90,12 +90,25 @@ export class UserRepository {
       },
     };
   }
+  
+  async deductPoints(userId, points) {
+    try {
+      const query = this.#knex('Users')
+          .where('userId', '=', userId)
+          .decrement('points', points)
+          .toSQL()
+          .toNative();
 
+      await this.#pool.query(query.sql, query.bindings);
+    } catch (err) {
+        throw err;
+    }
+  }
   async getUserById(userId) {
     try {
       const getUserInfoQuery = this.#knex
       .queryBuilder()
-      .select('username', 'email', 'userId')
+      .select('username', 'email', 'userId', 'avatar')
       .from('Users')
       .where('userId', '=', userId)
       .first()
@@ -134,11 +147,7 @@ export class UserRepository {
     const [userPlan] = (await this.#pool.query(userPlanQuery.sql, userPlanQuery.bindings)).rows;
     const userOriginalPlans = (await this.#pool.query(userOriginalPlanQuery.sql, userOriginalPlanQuery.bindings)).rows;
 
-    if (!userPlan) {
-      return null;
-    }
-
-    if (!userPlan?.todayTasks) {
+    if (userPlan && !userPlan?.todayTasks) {
       userPlan.todayTasks = [];
     }
 
@@ -240,7 +249,6 @@ export class UserRepository {
 
       const existingUser = await this.#pool.query(existingUserQuery.sql, existingUserQuery.bindings);
   
-      console.log('existingUser', existingUser)
       return Boolean(existingUser.rows.length);
     } catch (err) {
       console.error('Ошибка при проверке существования никнейма:', err);

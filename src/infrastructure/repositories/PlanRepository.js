@@ -151,4 +151,62 @@ export class PlanRepository {
       throw err;
     }
   }
+
+  async getExpiredPlans(today) {
+    const query = this.#knex('Plans')
+        .select('planId', 'userId')
+        .where('isActive', '=', true)
+        .where('planId', 'in', function() {
+            this.select('planId')
+                .from('Tasks')
+                .where('date', '<', today) // ✅ Дата последней задачи < сегодня
+                .groupBy('planId');
+        })
+        .toSQL()
+        .toNative();
+
+    const { rows } = await this.#pool.query(query.sql, query.bindings);
+    return rows;
+  }
+
+
+// Найти невыполненные задачи для плана
+  async getIncompleteTasks(planId, today) {
+    const query = this.#knex('Tasks')
+        .count('*')
+        .where('planId', '=', planId)
+        .where('date', '<', today) // ❌ Только просроченные задачи
+        .whereNot('status', '=', 'done') // ❌ Которые не были выполнены
+        .where('penaltyApplied', '=', false) // ❌ По которым штраф еще не был начислен
+        .toSQL()
+        .toNative();
+
+    const { rows } = await this.#pool.query(query.sql, query.bindings);
+    return rows[0].count || 0;
+  }
+
+
+
+// Завершить просроченный план
+  async markPlanAsCompleted(planId) {
+      const query = this.#knex('Plans')
+          .where('planId', '=', planId)
+          .update({ isActive: false })
+          .toSQL()
+          .toNative();
+
+      await this.#pool.query(query.sql, query.bindings);
+  }
+
+  async markPenaltyAsApplied(planId, today) {
+    const query = this.#knex('Tasks')
+        .where('planId', '=', planId)
+        .where('date', '<', today)
+        .whereNot('status', '=', 'done')
+        .update({ penaltyApplied: true })
+        .toSQL()
+        .toNative();
+
+    await this.#pool.query(query.sql, query.bindings);
+  }
 }
