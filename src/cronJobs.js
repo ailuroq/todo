@@ -4,7 +4,7 @@ import moment from 'moment';
 let cronJob = null; // Переменная для хранения запущенной задачи
 
 export function startCronJobs(planRepository, userRepository) {
-  cronJob = cron.schedule('*/10 * * * * *', async () => { // 🔄 Запуск каждый день в полночь
+  cronJob = cron.schedule('0 0 * * *', async () => { // 🔄 Запуск каждый день в полночь
       console.log('🔍 Проверяем просроченные планы...');
 
       const today = moment().startOf('day').format('YYYY-MM-DD');

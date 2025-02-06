@@ -69,7 +69,6 @@ export class OriginalPlanController {
         tag: '',
         tasks: [],
       };
-  
       // Обрабатываем все части запроса
       for await (const part of parts) {
         if (part.file) {
