@@ -235,7 +235,7 @@ export class OriginalPlanRepository {
           isMeal: task.isMeal,
           repeatType: task.repeatType,
           repeatDays: task.repeatDays,
-          tagId: task.tagId,
+          tag: task.tag,
           mainImageLink: task.mainImageLink,
           startTime: task.startTime,
           endTime: task.endTime,
