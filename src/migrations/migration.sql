@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS "Tags" (
     "name" VARCHAR(50) NOT NULL,
     "description" TEXT
 );
+ALTER TABLE "Tasks" ADD COLUMN "lastActivityDate" TIMESTAMPTZ DEFAULT NOW();
 
 -- Таблица оригинальных задач
 CREATE TABLE IF NOT EXISTS "OriginalTasks" (

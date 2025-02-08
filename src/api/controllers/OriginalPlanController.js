@@ -126,6 +126,8 @@ export class OriginalPlanController {
               const taskIndex = parseInt(match[1], 10);
               const key = match[2];
               plan.tasks[taskIndex] = plan.tasks[taskIndex] || {};
+              if (plan.tasks[taskIndex].startTime === 'null') plan.tasks[taskIndex].startTime = null;
+              if (plan.tasks[taskIndex].endTime === 'null') plan.tasks[taskIndex].endTime = null;
               plan.tasks[taskIndex][key] = key.includes("is")
                 ? value === "true"
                 : value;
@@ -133,7 +135,7 @@ export class OriginalPlanController {
           }
         }
       }
-  
+
       // Сохраняем план в базе данных
       const result = await this.originalPlanRepository.createPlanFromUser(plan, userId);
       return reply.send(result);

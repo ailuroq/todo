@@ -56,10 +56,10 @@ export class TaskRepository {
     try {
       if (taskData.startTime) {
         // Разбиваем строку по символу "T" и удаляем "Z"
-        taskData.startTime = taskData.startTime.split('T')[1].replace('Z', '');
+        taskData.startTime = taskData.startTime;
       }
       if (taskData.endTime) {
-        taskData.endTime = taskData.endTime.split('T')[1].replace('Z', '');
+        taskData.endTime = taskData.endTime;
       }
   
       if (taskData.isMeal) {

@@ -88,6 +88,7 @@ export class OriginalPlanRepository {
         .insert({
           userId,
           title: planData.title,
+          category: planData.tag,
           mainImageLink: planData.image,
           description: planData.description,
         })
@@ -107,6 +108,9 @@ export class OriginalPlanRepository {
             description: item.description,
             dayNumber: item.dayNumber,
             isMandatory: item.isMandatory,
+            taskOrder: item.order,
+            startTime: item.startTime,
+            endTime: item.endTime,
             mainImageLink: item.image,
             tag: item.tag,
             userId,
