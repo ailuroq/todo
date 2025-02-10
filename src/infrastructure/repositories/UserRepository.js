@@ -108,7 +108,7 @@ export class UserRepository {
     try {
       const getUserInfoQuery = this.#knex
       .queryBuilder()
-      .select('username', 'email', 'userId', 'avatar')
+      .select('username', 'email', 'userId', 'avatar', 'points')
       .from('Users')
       .where('userId', '=', userId)
       .first()
