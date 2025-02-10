@@ -17,7 +17,7 @@ export class UserRepository {
         .queryBuilder()
         .select('*')
         .from('Users')
-        .where('email', '=', email)
+        .where('username', '=', username)
         .first()
         .toSQL()
         .toNative();
@@ -36,7 +36,6 @@ export class UserRepository {
         .queryBuilder()
         .insert({
           username,
-          email,
           password: hashedPassword,
         })
         .into('Users')
